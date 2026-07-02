@@ -14,6 +14,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.com.innkercode.auth.dto.request.CreateUserRequest;
+import br.com.innkercode.auth.service.AuthService;
+import jakarta.validation.Valid;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
 import java.util.UUID;
 
 @RestController
@@ -23,13 +29,22 @@ import java.util.UUID;
 public class UserController {
 
     private final UserRepository userRepository;
+    private final AuthService authService;
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('MASTER', 'ADMIN')")
+    @Operation(summary = "Criar um novo usuário administrativamente", description = "Permite que administradores ou o master criem novos colaboradores ou administradores.")
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        UserResponse response = authService.createUser(request);
+        return ResponseEntity.ok(response);
+    }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'PARTNER')")
+    @PreAuthorize("hasAnyRole('MASTER', 'ADMIN')")
     @Operation(summary = "Buscar usuário por ID", description = "Retorna dados básicos do usuário. Requer role ADMIN ou PARTNER.")
     public ResponseEntity<UserResponse> getById(@PathVariable UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
-        return ResponseEntity.ok(new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getPictureUrl()));
+        return ResponseEntity.ok(new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getPictureUrl(), user.getRole().name()));
     }
 }
