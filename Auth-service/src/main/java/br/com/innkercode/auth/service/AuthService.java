@@ -5,7 +5,9 @@ import br.com.innkercode.auth.domain.entity.User;
 import br.com.innkercode.auth.domain.model.UserRole;
 import br.com.innkercode.auth.dto.request.AuthenticationRequest;
 import br.com.innkercode.auth.dto.request.RegisterRequest;
+import br.com.innkercode.auth.dto.request.CreateUserRequest;
 import br.com.innkercode.auth.dto.response.AuthenticationResponse;
+import br.com.innkercode.auth.dto.response.UserResponse;
 import br.com.innkercode.auth.exception.AuthException;
 import br.com.innkercode.auth.repository.PasswordResetTokenRepository;
 import br.com.innkercode.auth.repository.UserRepository;
@@ -60,6 +62,33 @@ public class AuthService {
                 user.getEmail(),
                 user.getRole().name(),
                 user.getPictureUrl()
+        );
+    }
+
+    public UserResponse createUser(CreateUserRequest request) {
+        log.info("Iniciando criação administrativa de usuário com role: {}", request.role());
+
+        if (userRepository.findByEmail(request.email()).isPresent()) {
+            log.warn("Tentativa de criação com email já existente: {}", request.email());
+            throw new AuthException("Este email já está cadastrado");
+        }
+
+        User user = User.builder()
+                .name(request.name())
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .role(request.role())
+                .active(true)
+                .build();
+        User savedUser = userRepository.save(user);
+        log.info("Usuário criado com sucesso administrativamente: {}", request.email());
+
+        return new UserResponse(
+                savedUser.getId(),
+                savedUser.getName(),
+                savedUser.getEmail(),
+                savedUser.getPictureUrl(),
+                savedUser.getRole().name()
         );
     }
 
