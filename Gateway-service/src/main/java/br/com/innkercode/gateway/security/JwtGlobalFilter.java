@@ -36,7 +36,8 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
             "/login/oauth2",
             "/oauth2",
             "/v3/api-docs",
-            "/swagger-ui"
+            "/swagger-ui",
+            "/api/v1/webhooks"
     );
 
     @Override
