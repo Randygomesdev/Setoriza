@@ -9,9 +9,12 @@ import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.dto.webhook.WebhookPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +24,12 @@ public class ChatbotService {
     private final TicketService ticketService;
     private final MessageService messageService;
     private final EvolutionClient evolutionClient;
+    private final S3Service s3Service;
+
+    @Value("${whatsapp.evolution.apikey}")
+    private String apiKey;
+
+    private final RestClient restClient = RestClient.create();
 
     public void processIncomingWebhook(WebhookPayload payload) {
         if (payload == null || payload.getData() == null || payload.getData().getKey() == null) {
@@ -46,10 +55,20 @@ public class ChatbotService {
             return;
         }
 
-        String textContent = extractTextContent(payload.getData().getMessage());
-        if (textContent == null || textContent.isBlank()) {
-            log.info("Mensagem recebida sem conteúdo de texto direto (pode ser mídia).");
-            textContent = "[Mídia/Outro]";
+        // Determinar o tipo da mensagem e conteúdo
+        MessageType messageType = MessageType.TEXTO;
+        String content = extractTextContent(payload.getData().getMessage());
+
+        // Verificar se é uma mensagem de mídia
+        String mediaUrl = handleMediaMessage(payload.getData().getMessage());
+        if (mediaUrl != null) {
+            content = mediaUrl;
+            messageType = determineMessageType(payload.getData().getMessage());
+        }
+
+        if (content == null || content.isBlank()) {
+            log.info("Mensagem recebida sem conteúdo de texto direto e sem mídia válida.");
+            content = "[Mensagem não suportada]";
         }
 
         String clientName = payload.getData().getPushName();
@@ -60,17 +79,24 @@ public class ChatbotService {
         if (activeTicketOpt.isEmpty()) {
             // Criar novo ticket de triagem e enviar menu inicial
             Ticket ticket = ticketService.createTriageTicket(senderNumber, clientName);
-            messageService.saveMessage(ticket, SenderType.CLIENTE, MessageType.TEXTO, textContent);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
 
             sendTriageMenu(senderNumber);
         } else {
             Ticket ticket = activeTicketOpt.get();
-            messageService.saveMessage(ticket, SenderType.CLIENTE, MessageType.TEXTO, textContent);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
 
             if (ticket.getStatus() == TicketStatus.TRIAGEM) {
-                handleTriageInput(ticket, textContent);
+                // Durante a triagem, se for texto, processamos a opção de menu
+                if (messageType == MessageType.TEXTO) {
+                    handleTriageInput(ticket, content);
+                } else {
+                    // Envia mensagem de erro indicando que apenas opções de texto são válidas durante a triagem
+                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), 
+                            "Por favor, envie o número correspondente à sua opção em formato de texto para direcionarmos seu contato.");
+                }
             } else {
-                log.info("Ticket {} ativo em status {}, mensagem recebida: {}", ticket.getId(), ticket.getStatus(), textContent);
+                log.info("Ticket {} ativo em status {}, mensagem de tipo {} recebida.", ticket.getId(), ticket.getStatus(), messageType);
             }
         }
     }
@@ -82,6 +108,54 @@ public class ChatbotService {
         }
         if (msg.getExtendedTextMessage() != null && msg.getExtendedTextMessage().getText() != null) {
             return msg.getExtendedTextMessage().getText();
+        }
+        return null;
+    }
+
+    private MessageType determineMessageType(WebhookPayload.WebhookMessage msg) {
+        if (msg == null) return MessageType.TEXTO;
+        if (msg.getImageMessage() != null) return MessageType.IMAGEM;
+        if (msg.getAudioMessage() != null || msg.getVideoMessage() != null || msg.getDocumentMessage() != null) {
+            return MessageType.DOCUMENTO;
+        }
+        return MessageType.TEXTO;
+    }
+
+    private String handleMediaMessage(WebhookPayload.WebhookMessage msg) {
+        if (msg == null) return null;
+
+        WebhookPayload.MediaMessage media = null;
+        if (msg.getImageMessage() != null) {
+            media = msg.getImageMessage();
+        } else if (msg.getAudioMessage() != null) {
+            media = msg.getAudioMessage();
+        } else if (msg.getVideoMessage() != null) {
+            media = msg.getVideoMessage();
+        } else if (msg.getDocumentMessage() != null) {
+            media = msg.getDocumentMessage();
+        }
+
+        if (media == null || media.getUrl() == null) {
+            return null;
+        }
+
+        try {
+            log.info("Baixando mídia temporária do WhatsApp Gateway: {}", media.getUrl());
+            byte[] fileBytes = restClient.get()
+                    .uri(media.getUrl())
+                    .header("apikey", apiKey)
+                    .retrieve()
+                    .body(byte[].class);
+
+            if (fileBytes != null && fileBytes.length > 0) {
+                String originalFilename = media.getFileName() != null ? media.getFileName() : "media_" + UUID.randomUUID();
+                String contentType = media.getMimetype() != null ? media.getMimetype() : "application/octet-stream";
+
+                // Envia para o MinIO S3
+                return s3Service.uploadFile(originalFilename, fileBytes, contentType);
+            }
+        } catch (Exception e) {
+            log.error("Erro ao transferir mídia do gateway para o MinIO S3", e);
         }
         return null;
     }
