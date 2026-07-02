@@ -1,11 +1,16 @@
 package br.com.innkercode.ticket.service;
 
 import br.com.innkercode.ticket.client.EvolutionClient;
+import br.com.innkercode.ticket.domain.entity.Client;
+import br.com.innkercode.ticket.domain.entity.ClientContact;
+import br.com.innkercode.ticket.domain.entity.Sector;
 import br.com.innkercode.ticket.domain.entity.Ticket;
 import br.com.innkercode.ticket.domain.model.MessageType;
-import br.com.innkercode.ticket.domain.model.Sector;
 import br.com.innkercode.ticket.domain.model.SenderType;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
+import br.com.innkercode.ticket.domain.repository.ClientContactRepository;
+import br.com.innkercode.ticket.domain.repository.ClientRepository;
+import br.com.innkercode.ticket.domain.repository.SectorRepository;
 import br.com.innkercode.ticket.dto.webhook.WebhookPayload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,6 +31,10 @@ public class ChatbotService {
     private final MessageService messageService;
     private final EvolutionClient evolutionClient;
     private final S3Service s3Service;
+    
+    private final ClientRepository clientRepository;
+    private final ClientContactRepository clientContactRepository;
+    private final SectorRepository sectorRepository;
 
     @Value("${whatsapp.evolution.apikey}")
     private String apiKey;
@@ -73,32 +83,162 @@ public class ChatbotService {
 
         String clientName = payload.getData().getPushName();
 
-        // Buscar ticket ativo para o número
+        // 1. Verificar se o número de WhatsApp pertence a algum contato já cadastrado
+        Optional<ClientContact> contactOpt = clientContactRepository.findByWhatsappNumber(senderNumber);
+
+        if (contactOpt.isEmpty()) {
+            // Caso não tenha vínculo cadastrado
+            handleUnknownContact(senderNumber, clientName, messageType, content);
+        } else {
+            // Caso já tenha vínculo cadastrado
+            ClientContact contact = contactOpt.get();
+            handleKnownContact(contact, messageType, content, clientName);
+        }
+    }
+
+    private void handleUnknownContact(String senderNumber, String clientName, MessageType messageType, String content) {
         Optional<Ticket> activeTicketOpt = ticketService.getActiveTicketByWhatsappNumber(senderNumber);
 
         if (activeTicketOpt.isEmpty()) {
-            // Criar novo ticket de triagem e enviar menu inicial
-            Ticket ticket = ticketService.createTriageTicket(senderNumber, clientName);
+            // Primeiro contato deste número: inicia identificação pedindo CNPJ
+            Ticket ticket = ticketService.createIdentificationTicket(senderNumber, clientName);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
+            
+            sendCnpjRequest(senderNumber);
+        } else {
+            Ticket ticket = activeTicketOpt.get();
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
 
-            sendTriageMenu(senderNumber);
+            if (ticket.getStatus() == TicketStatus.IDENTIFICACAO_CNPJ) {
+                if (messageType == MessageType.TEXTO) {
+                    handleCnpjInput(ticket, content, clientName);
+                } else {
+                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), 
+                            "Por favor, informe o CNPJ da sua empresa (somente números) em formato de texto para podermos identificar seu cadastro.");
+                }
+            } else {
+                log.warn("Ticket {} de número desconhecido está em status inesperado: {}", ticket.getId(), ticket.getStatus());
+            }
+        }
+    }
+
+    private void handleKnownContact(ClientContact contact, MessageType messageType, String content, String clientName) {
+        Optional<Ticket> activeTicketOpt = ticketService.getActiveTicketByWhatsappNumber(contact.getWhatsappNumber());
+
+        if (activeTicketOpt.isEmpty()) {
+            // Abre novo ticket direto em TRIAGEM associado à empresa do contato
+            Ticket ticket = ticketService.createTriageTicket(contact.getWhatsappNumber(), clientName, contact.getClient().getId());
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
+
+            sendTriageMenu(contact.getWhatsappNumber(), contact.getClient().getCompanyName());
         } else {
             Ticket ticket = activeTicketOpt.get();
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
 
             if (ticket.getStatus() == TicketStatus.TRIAGEM) {
-                // Durante a triagem, se for texto, processamos a opção de menu
                 if (messageType == MessageType.TEXTO) {
                     handleTriageInput(ticket, content);
                 } else {
-                    // Envia mensagem de erro indicando que apenas opções de texto são válidas durante a triagem
                     evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), 
-                            "Por favor, envie o número correspondente à sua opção em formato de texto para direcionarmos seu contato.");
+                            "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.");
                 }
             } else {
-                log.info("Ticket {} ativo em status {}, mensagem de tipo {} recebida.", ticket.getId(), ticket.getStatus(), messageType);
+                log.info("Ticket {} ativo em status {}, mensagem recebida.", ticket.getId(), ticket.getStatus());
             }
         }
+    }
+
+    private void sendCnpjRequest(String whatsappNumber) {
+        String msg = "Olá! Não identifiquei o seu número em nosso cadastro de atendimentos.\n\n" +
+                     "Por favor, digite o *CNPJ da sua empresa* (somente números) para que eu possa localizar o seu cadastro:";
+        evolutionClient.sendTextMessage(whatsappNumber, msg);
+    }
+
+    private void handleCnpjInput(Ticket ticket, String input, String pushName) {
+        String cleanCnpj = input.replaceAll("\\D", ""); // Apenas números
+        log.info("Processando tentativa de identificação por CNPJ: '{}' para o ticket {}", cleanCnpj, ticket.getId());
+
+        Optional<Client> clientOpt = clientRepository.findByCnpj(cleanCnpj);
+
+        if (clientOpt.isPresent()) {
+            Client client = clientOpt.get();
+            log.info("Empresa cadastrada identificada: {} (ID: {})", client.getCompanyName(), client.getId());
+
+            // 1. Criar o vínculo do contato
+            ClientContact newContact = ClientContact.builder()
+                    .client(client)
+                    .whatsappNumber(ticket.getWhatsappNumber())
+                    .contactName(pushName != null ? pushName : "Funcionário")
+                    .build();
+            clientContactRepository.save(newContact);
+
+            // 2. Promover ticket para TRIAGEM e associar cliente
+            ticketService.promoteToTriage(ticket.getId(), client.getId());
+
+            // 3. Enviar mensagem de sucesso e menu de triagem
+            sendTriageMenu(ticket.getWhatsappNumber(), client.getCompanyName());
+        } else {
+            log.warn("CNPJ {} não cadastrado no sistema.", cleanCnpj);
+            String errorMsg = "⚠️ Desculpe, não localizei nenhuma empresa cadastrada com o CNPJ informado.\n\n" +
+                              "Por favor, verifique o número e digite novamente (somente números), ou entre em contato com nosso suporte administrativo para atualizar o cadastro.";
+            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
+        }
+    }
+
+    private void sendTriageMenu(String whatsappNumber, String companyName) {
+        List<Sector> activeSectors = sectorRepository.findByActiveTrue();
+
+        if (activeSectors.isEmpty()) {
+            String errorMsg = "Olá! Identificamos a empresa " + companyName + ".\n\n" +
+                              "Infelizmente não há nenhum setor de atendimento configurado no momento. Por favor, aguarde ou fale com o administrador.";
+            evolutionClient.sendTextMessage(whatsappNumber, errorMsg);
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Empresa *").append(companyName).append("* identificada com sucesso! Seu número foi vinculado ao cadastro.\n\n");
+        sb.append("Para iniciarmos seu atendimento, escolha uma das opções de setores abaixo:\n");
+        
+        for (int i = 0; i < activeSectors.size(); i++) {
+            sb.append(i + 1).append(" - ").append(activeSectors.get(i).getFriendlyName()).append("\n");
+        }
+
+        evolutionClient.sendTextMessage(whatsappNumber, sb.toString());
+    }
+
+    private void handleTriageInput(Ticket ticket, String input) {
+        List<Sector> activeSectors = sectorRepository.findByActiveTrue();
+        String cleanInput = input.trim();
+        int option = -1;
+
+        try {
+            option = Integer.parseInt(cleanInput);
+        } catch (NumberFormatException e) {
+            // Não é um número válido
+        }
+
+        if (option >= 1 && option <= activeSectors.size()) {
+            Sector selectedSector = activeSectors.get(option - 1);
+            ticketService.updateSector(ticket.getId(), selectedSector);
+
+            String confirmationMessage = String.format(
+                    "Entendi! Você foi encaminhado para o setor de *%s*. Aguarde que logo um atendente irá falar com você.",
+                    selectedSector.getFriendlyName()
+            );
+            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), confirmationMessage);
+        } else {
+            // Entrada inválida, reenviar menu
+            sendInvalidOptionMenu(ticket.getWhatsappNumber(), activeSectors);
+        }
+    }
+
+    private void sendInvalidOptionMenu(String whatsappNumber, List<Sector> activeSectors) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("❌ Opção inválida. Por favor, digite apenas o número correspondente ao setor desejado:\n\n");
+        for (int i = 0; i < activeSectors.size(); i++) {
+            sb.append(i + 1).append(" - ").append(activeSectors.get(i).getFriendlyName()).append("\n");
+        }
+        evolutionClient.sendTextMessage(whatsappNumber, sb.toString());
     }
 
     private String extractTextContent(WebhookPayload.WebhookMessage msg) {
@@ -151,64 +291,11 @@ public class ChatbotService {
                 String originalFilename = media.getFileName() != null ? media.getFileName() : "media_" + UUID.randomUUID();
                 String contentType = media.getMimetype() != null ? media.getMimetype() : "application/octet-stream";
 
-                // Envia para o MinIO S3
                 return s3Service.uploadFile(originalFilename, fileBytes, contentType);
             }
         } catch (Exception e) {
             log.error("Erro ao transferir mídia do gateway para o MinIO S3", e);
         }
         return null;
-    }
-
-    private void sendTriageMenu(String whatsappNumber) {
-        String menu = "Olá! Para iniciarmos seu atendimento, escolha uma das opções abaixo:\n" +
-                "1 - Fiscal\n" +
-                "2 - DP (Departamento Pessoal)\n" +
-                "3 - Contábil\n" +
-                "4 - Societário";
-        evolutionClient.sendTextMessage(whatsappNumber, menu);
-    }
-
-    private void handleTriageInput(Ticket ticket, String input) {
-        String cleanInput = input.trim();
-        Sector selectedSector = null;
-
-        if ("1".equals(cleanInput)) {
-            selectedSector = Sector.FISCAL;
-        } else if ("2".equals(cleanInput)) {
-            selectedSector = Sector.DEPARTAMENTO_PESSOAL;
-        } else if ("3".equals(cleanInput)) {
-            selectedSector = Sector.CONTABIL;
-        } else if ("4".equals(cleanInput)) {
-            selectedSector = Sector.SOCIETARIO;
-        }
-
-        if (selectedSector != null) {
-            ticketService.updateSector(ticket.getId(), selectedSector);
-
-            String friendlyName = getSectorFriendlyName(selectedSector);
-            String confirmationMessage = String.format(
-                    "Entendi! Você foi encaminhado para o setor de %s. Aguarde que logo um atendente irá falar com você.",
-                    friendlyName
-            );
-            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), confirmationMessage);
-        } else {
-            // Opção inválida, envia novamente o menu
-            String invalidMessage = "Opção inválida. Por favor digite o número correspondente ao setor desejado:\n" +
-                    "1 - Fiscal\n" +
-                    "2 - DP (Departamento Pessoal)\n" +
-                    "3 - Contábil\n" +
-                    "4 - Societário";
-            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), invalidMessage);
-        }
-    }
-
-    private String getSectorFriendlyName(Sector sector) {
-        return switch (sector) {
-            case FISCAL -> "Fiscal";
-            case DEPARTAMENTO_PESSOAL -> "DP (Departamento Pessoal)";
-            case CONTABIL -> "Contábil";
-            case SOCIETARIO -> "Societário";
-        };
     }
 }

@@ -68,13 +68,15 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
             String userId = claims.get("userId", String.class);
             String role   = claims.get("role", String.class);
             String email  = claims.getSubject();
+            String sectors = claims.get("sectors", String.class);
 
             log.debug("Gateway: token válido para usuário {} com role {}", email, role);
 
             ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Id",    userId != null ? userId : "")
-                    .header("X-User-Role",  role   != null ? role   : "")
-                    .header("X-User-Email", email  != null ? email  : "")
+                    .header("X-User-Id",      userId != null ? userId : "")
+                    .header("X-User-Role",    role   != null ? role   : "")
+                    .header("X-User-Email",   email  != null ? email  : "")
+                    .header("X-User-Sectors", sectors != null ? sectors : "")
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());

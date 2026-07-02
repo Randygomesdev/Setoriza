@@ -38,6 +38,9 @@ public class JwtService {
         if (user.getPictureUrl() != null) {
             extraClaims.put("pictureUrl", user.getPictureUrl());
         }
+        if (user.getSectors() != null) {
+            extraClaims.put("sectors", user.getSectors());
+        }
 
         return buildToken(extraClaims, user.getUsername(), jwtExpiration);
     }

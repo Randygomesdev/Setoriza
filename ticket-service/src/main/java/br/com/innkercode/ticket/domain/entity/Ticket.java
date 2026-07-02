@@ -1,6 +1,5 @@
 package br.com.innkercode.ticket.domain.entity;
 
-import br.com.innkercode.ticket.domain.model.Sector;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -20,7 +19,7 @@ public class Ticket extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "client_id", nullable = true)
+    @Column(name = "client_id")
     private UUID clientId;
 
     @Column(name = "assigned_agent_id")
@@ -32,8 +31,8 @@ public class Ticket extends BaseEntity {
     @Column(name = "client_name")
     private String clientName;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "sector")
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "sector_id")
     private Sector sector;
 
     @Enumerated(EnumType.STRING)

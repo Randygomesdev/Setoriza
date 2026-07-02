@@ -55,6 +55,9 @@ public class User extends BaseEntity implements UserDetails{
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(name = "sectors")
+    private String sectors;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -39,12 +40,37 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('MASTER', 'ADMIN')")
+    @Operation(summary = "Listar todos os usuários", description = "Retorna a lista de todos os usuários do sistema. Requer role MASTER ou ADMIN.")
+    public ResponseEntity<List<UserResponse>> getAll() {
+        List<User> users = userRepository.findAll();
+        List<UserResponse> response = users.stream()
+                .map(user -> new UserResponse(
+                        user.getId(),
+                        user.getName(),
+                        user.getEmail(),
+                        user.getPictureUrl(),
+                        user.getRole().name(),
+                        user.getSectors()
+                ))
+                .toList();
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('MASTER', 'ADMIN')")
-    @Operation(summary = "Buscar usuário por ID", description = "Retorna dados básicos do usuário. Requer role ADMIN ou PARTNER.")
+    @Operation(summary = "Buscar usuário por ID", description = "Retorna dados básicos do usuário. Requer role MASTER ou ADMIN.")
     public ResponseEntity<UserResponse> getById(@PathVariable UUID id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
-        return ResponseEntity.ok(new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getPictureUrl(), user.getRole().name()));
+        return ResponseEntity.ok(new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPictureUrl(),
+                user.getRole().name(),
+                user.getSectors()
+        ));
     }
 }

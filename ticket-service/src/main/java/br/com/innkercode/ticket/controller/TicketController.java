@@ -2,7 +2,6 @@ package br.com.innkercode.ticket.controller;
 
 import br.com.innkercode.ticket.domain.entity.Message;
 import br.com.innkercode.ticket.domain.entity.Ticket;
-import br.com.innkercode.ticket.domain.model.Sector;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.dto.MessageResponse;
 import br.com.innkercode.ticket.dto.SendMessageRequest;
@@ -29,11 +28,11 @@ public class TicketController {
     @GetMapping
     public ResponseEntity<List<Ticket>> listTickets(
             @RequestParam(required = false) List<TicketStatus> status,
-            @RequestParam(required = false) Sector sector,
+            @RequestParam(required = false) UUID sectorId,
             @RequestParam(required = false) UUID assignedAgentId
     ) {
-        log.info("Listando tickets com filtros - status: {}, sector: {}, assignedAgentId: {}", status, sector, assignedAgentId);
-        List<Ticket> tickets = ticketService.getTickets(status, sector, assignedAgentId);
+        log.info("Listando tickets com filtros - status: {}, sectorId: {}, assignedAgentId: {}", status, sectorId, assignedAgentId);
+        List<Ticket> tickets = ticketService.getTickets(status, sectorId, assignedAgentId);
         return ResponseEntity.ok(tickets);
     }
 

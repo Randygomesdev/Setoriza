@@ -19,5 +19,7 @@ public record CreateUserRequest(
         String password,
 
         @NotNull(message = "O papel (role) é obrigatório")
-        UserRole role
+        UserRole role,
+
+        String sectors
 ) {}
