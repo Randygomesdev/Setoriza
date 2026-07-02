@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.com.innkercode.ticket.client.EvolutionClient;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +23,7 @@ public class MessageService {
 
     private final MessageRepository messageRepository;
     private final TicketEventPublisher eventPublisher;
+    private final EvolutionClient evolutionClient;
 
     public List<Message> getMessagesByTicketId(UUID ticketId) {
         return messageRepository.findByTicketIdOrderBySentAtAsc(ticketId);
@@ -39,6 +41,21 @@ public class MessageService {
                 .build();
         Message savedMessage = messageRepository.save(message);
         eventPublisher.publish("MESSAGE_RECEIVED", ticket.getId().toString(), savedMessage);
+        return savedMessage;
+    }
+
+    @Transactional
+    public Message sendOperatorMessage(Ticket ticket, String content) {
+        log.info("Processando envio de resposta humana para o ticket: {} - {}", ticket.getId(), ticket.getWhatsappNumber());
+        // 1. Salva a mensagem no banco local como COLABORADOR
+        Message savedMessage = saveMessage(ticket, SenderType.COLABORADOR, MessageType.TEXTO, content);
+        
+        // 2. Dispara a mensagem para o cliente via Evolution API
+        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), content);
+        
+        // 3. Publica evento de envio de resposta humana
+        eventPublisher.publish("MESSAGE_SENT_BY_AGENT", ticket.getId().toString(), savedMessage);
+
         return savedMessage;
     }
 }
