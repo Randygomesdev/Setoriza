@@ -61,7 +61,7 @@ services:
       - setoriza_network
 
   evolution_api:
-    image: atendai/evolution-api:latest
+    image: evoapicloud/evolution-api:latest
     container_name: evolution_api
     restart: unless-stopped
     ports:
