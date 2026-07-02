@@ -1,0 +1,28 @@
+# IDEs and editors
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Build tool folders
+**/target/
+**/bin/
+**/build/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Dependency folders
+.gradle/
+.mvn/
+
+# Log files
+*.log
+
+# Env files and secrets
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
