@@ -50,13 +50,18 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
         }
 
         String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        String token = null;
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else if (path != null && path.startsWith("/api/v1/ws")) {
+            token = request.getQueryParams().getFirst("token");
+        }
+
+        if (token == null || token.isBlank()) {
             log.warn("Gateway: requisição sem token JWT para {}", path);
             return unauthorizedResponse(exchange);
         }
-
-        String token = authHeader.substring(7);
 
         try {
             Claims claims = extractClaims(token);

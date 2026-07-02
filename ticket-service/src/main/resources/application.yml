@@ -46,3 +46,6 @@ whatsapp:
   evolution:
     url: ${EVOLUTION_URL:http://localhost:8085}
     apikey: ${EVOLUTION_APIKEY:setoriza_api_key_12345}
+
+jwt:
+  secret: ${JWT_SECRET:sua_chave_secreta_minimo_256_bits}
