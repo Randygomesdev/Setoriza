@@ -8,8 +8,10 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+
 @Repository
-public interface TicketRepository extends JpaRepository<Ticket, UUID> {
+public interface TicketRepository extends JpaRepository<Ticket, UUID>, JpaSpecificationExecutor<Ticket> {
 
     Optional<Ticket> findFirstByWhatsappNumberAndStatusNotOrderByCreatedAtDesc(String whatsappNumber, TicketStatus status);
 

@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
+import java.util.ArrayList;
 
 @Service
 @RequiredArgsConstructor
@@ -21,6 +23,26 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final TicketEventPublisher eventPublisher;
+
+    public List<Ticket> getTickets(List<TicketStatus> statuses, Sector sector, UUID assignedAgentId) {
+        log.info("Buscando tickets filtrados por statuses: {}, sector: {}, assignedAgentId: {}", statuses, sector, assignedAgentId);
+        return ticketRepository.findAll((root, query, cb) -> {
+            var predicates = new ArrayList<jakarta.persistence.criteria.Predicate>();
+
+            if (statuses != null && !statuses.isEmpty()) {
+                predicates.add(root.get("status").in(statuses));
+            }
+            if (sector != null) {
+                predicates.add(cb.equal(root.get("sector"), sector));
+            }
+            if (assignedAgentId != null) {
+                predicates.add(cb.equal(root.get("assignedAgentId"), assignedAgentId));
+            }
+
+            query.orderBy(cb.desc(root.get("createdAt")));
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        });
+    }
 
     public Optional<Ticket> getActiveTicketByWhatsappNumber(String whatsappNumber) {
         return ticketRepository.findFirstByWhatsappNumberAndStatusNotOrderByCreatedAtDesc(whatsappNumber, TicketStatus.CONCLUIDO);
@@ -66,7 +88,7 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
 
         Ticket updatedTicket = ticketRepository.save(ticket);
-        eventPublisher.publish("TICKET_UPDATED", updatedTicket.getId().toString(), updatedTicket);
+        eventPublisher.publish("TICKET_CLAIMED", updatedTicket.getId().toString(), updatedTicket);
         return updatedTicket;
     }
 
@@ -80,7 +102,12 @@ public class TicketService {
         ticket.setUpdatedAt(LocalDateTime.now());
 
         Ticket updatedTicket = ticketRepository.save(ticket);
-        eventPublisher.publish("TICKET_UPDATED", updatedTicket.getId().toString(), updatedTicket);
+        eventPublisher.publish("TICKET_RESOLVED", updatedTicket.getId().toString(), updatedTicket);
         return updatedTicket;
+    }
+
+    public Ticket getTicketById(UUID ticketId) {
+        return ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new IllegalArgumentException("Ticket não encontrado com o ID: " + ticketId));
     }
 }
