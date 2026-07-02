@@ -4,6 +4,7 @@ import br.com.innkercode.ticket.domain.entity.Ticket;
 import br.com.innkercode.ticket.domain.entity.Sector;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.domain.repository.TicketRepository;
+import br.com.innkercode.ticket.domain.repository.SectorRepository;
 import br.com.innkercode.ticket.event.TicketEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 public class TicketService {
 
     private final TicketRepository ticketRepository;
+    private final SectorRepository sectorRepository;
     private final TicketEventPublisher eventPublisher;
 
     public List<Ticket> getTickets(List<TicketStatus> statuses, UUID sectorId, UUID assignedAgentId) {
@@ -130,6 +132,34 @@ public class TicketService {
         Ticket savedTicket = ticketRepository.save(ticket);
         eventPublisher.publish("TICKET_UPDATED", savedTicket.getId().toString(), savedTicket);
         return savedTicket;
+    }
+
+    @Transactional
+    public Ticket transferTicket(UUID ticketId, UUID targetSectorId, UUID targetAgentId) {
+        log.info("Transferindo ticket {} - Novo setor: {}, Novo atendente: {}", ticketId, targetSectorId, targetAgentId);
+        Ticket ticket = getTicketById(ticketId);
+
+        if (targetSectorId != null) {
+            Sector sector = sectorRepository.findById(targetSectorId)
+                    .orElseThrow(() -> new IllegalArgumentException("Setor de destino não encontrado"));
+            ticket.setSector(sector);
+            
+            if (targetAgentId == null) {
+                // Se transferiu para o setor sem atendente específico, volta para a fila
+                ticket.setAssignedAgentId(null);
+                ticket.setStatus(TicketStatus.AGUARDANDO_ATENDIMENTO);
+            }
+        }
+
+        if (targetAgentId != null) {
+            ticket.setAssignedAgentId(targetAgentId);
+            ticket.setStatus(TicketStatus.EM_ANDAMENTO);
+        }
+
+        ticket.setUpdatedAt(LocalDateTime.now());
+        Ticket updatedTicket = ticketRepository.save(ticket);
+        eventPublisher.publish("TICKET_UPDATED", updatedTicket.getId().toString(), updatedTicket);
+        return updatedTicket;
     }
 
     public Ticket getTicketById(UUID ticketId) {

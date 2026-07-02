@@ -5,6 +5,7 @@ import br.com.innkercode.ticket.domain.entity.Ticket;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.dto.MessageResponse;
 import br.com.innkercode.ticket.dto.SendMessageRequest;
+import br.com.innkercode.ticket.dto.TransferTicketRequest;
 import br.com.innkercode.ticket.service.MessageService;
 import br.com.innkercode.ticket.service.TicketService;
 import jakarta.validation.Valid;
@@ -47,6 +48,16 @@ public class TicketController {
         }
         UUID agentId = UUID.fromString(userIdStr);
         Ticket ticket = ticketService.assignAgent(id, agentId);
+        return ResponseEntity.ok(ticket);
+    }
+
+    @PostMapping("/{id}/transfer")
+    public ResponseEntity<Ticket> transferTicket(
+            @PathVariable UUID id,
+            @RequestBody TransferTicketRequest request
+    ) {
+        log.info("Recebida requisição para transferir ticket {}", id);
+        Ticket ticket = ticketService.transferTicket(id, request.targetSectorId(), request.targetAgentId());
         return ResponseEntity.ok(ticket);
     }
 
