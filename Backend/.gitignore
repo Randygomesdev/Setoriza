@@ -4,16 +4,12 @@
 *.iml
 *.ipr
 *.iws
-*.af
-*~lock~
 
 # Build tool folders
 **/target/
 **/bin/
 **/build/
 !.mvn/wrapper/maven-wrapper.jar
-node_modules/
-dist/
 
 # Dependency folders
 .gradle/
@@ -30,3 +26,7 @@ dist/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Roadmap
+roadmap.md
+../roadmap.md
