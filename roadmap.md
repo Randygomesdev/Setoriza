@@ -72,7 +72,7 @@ graph TD
 ### 💻 Fase 5: Dashboard Frontend (Painel Multiusuário) (Próximo Passo)
 *Objetivo: Construir a interface visual do atendente onde as salas de chat estarão disponíveis.*
 
-- [ ] **5.1 Tecnologias Sugeridas:** React + Vite + TypeScript (com TailwindCSS e Shadcn/UI para design premium).
+- [x] **5.1 Tecnologias Sugeridas:** React + Vite + TypeScript (com TailwindCSS e Shadcn/UI para design premium). Configuração de ativos (logo/favicon), index.css, tema nativo e setup inicial concluídos com sucesso.
 - [ ] **5.2 Telas do Operador:**
   - **Tela de Login:** Integração com o `auth-service` para captura de tokens JWT.
   - **Listagem de Chamados (Sidebar):** Atualização instantânea com novos chamados entrantes (triados) utilizando conexão WebSocket no tópico `/topic/tickets`.
