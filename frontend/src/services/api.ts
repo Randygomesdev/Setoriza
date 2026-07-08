@@ -127,4 +127,64 @@ export const api = {
       return request<any[]>('/sectors');
     },
   },
+
+  users: {
+    list: async () => {
+      return request<any[]>('/users');
+    },
+    create: async (user: { name: string; email: string; password?: string; role: string; sectors: string }) => {
+      return request<any>('/users', {
+        method: 'POST',
+        body: JSON.stringify(user),
+      });
+    },
+  },
+  
+  clients: {
+    list: async () => {
+      return request<any[]>('/clients');
+    },
+    create: async (client: { companyName: string; cnpj: string }) => {
+      return request<any>('/clients', {
+        method: 'POST',
+        body: JSON.stringify(client),
+      });
+    },
+    update: async (id: string, client: { companyName: string; cnpj: string }) => {
+      return request<any>(`/clients/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(client),
+      });
+    },
+    delete: async (id: string) => {
+      return request<void>(`/clients/${id}`, {
+        method: 'DELETE',
+      });
+    },
+    addContact: async (clientId: string, contact: { whatsappNumber: string; contactName: string }) => {
+      return request<any>(`/clients/${clientId}/contacts`, {
+        method: 'POST',
+        body: JSON.stringify(contact),
+      });
+    },
+  },
+
+  integration: {
+    getStatus: async () => {
+      return request<any>('/tickets/integration/status');
+    },
+    createInstance: async () => {
+      return request<any>('/tickets/integration/instance', {
+        method: 'POST',
+      });
+    },
+    getQrCode: async () => {
+      return request<any>('/tickets/integration/qrcode');
+    },
+    logout: async () => {
+      return request<void>('/tickets/integration/logout', {
+        method: 'POST',
+      });
+    },
+  },
 };

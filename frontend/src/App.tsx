@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Chat } from './pages/Chat';
+import { Admin } from './pages/Admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import logo from './assets/logo.svg';
 
@@ -126,6 +127,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Chat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['MASTER', 'ADMIN']}>
+              <Admin />
             </ProtectedRoute>
           }
         />

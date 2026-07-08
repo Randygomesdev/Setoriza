@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { connectWebSocket, disconnectWebSocket } from '../services/websocket';
@@ -19,7 +19,8 @@ import {
   MessageCircle,
   Laptop,
   Camera,
-  Archive
+  Archive,
+  Settings
 } from 'lucide-react';
 
 export const Chat: React.FC = () => {
@@ -237,16 +238,25 @@ export const Chat: React.FC = () => {
           </div>
 
           <div className="flex gap-1">
+            {(user?.role === 'ADMIN' || user?.role === 'MASTER') && (
+              <Link
+                to="/admin"
+                className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
+                title="Painel Administrativo"
+              >
+                <Settings size={16} />
+              </Link>
+            )}
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
               title="Alternar Tema"
             >
               {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/20 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-red-650 dark:hover:text-red-400 hover:bg-red-950/20 transition-colors"
               title="Sair"
             >
               <LogOut size={16} />

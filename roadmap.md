@@ -12,8 +12,8 @@ graph TD
     Phase2 -->|Concluído| Phase3[Fase 3: APIs do Operador]
     Phase3 -->|Concluído| Phase4[Fase 4: Configuração WebSockets]
     Phase4 -->|Concluído| Phase5[Fase 5: Dashboard Frontend]
-    Phase5 -->|A seguir| Phase6[Fase 6: Testes Integrados E2E]
-    Phase6 --> Phase7[Fase 7: Produção & DevOps]
+    Phase5 -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
+    Phase6 -->|A seguir| Phase7[Fase 7: Produção & DevOps]
 ```
 
 ---
@@ -69,25 +69,31 @@ graph TD
 
 ---
 
-### 💻 Fase 5: Dashboard Frontend (Painel Multiusuário) (Próximo Passo)
-*Objetivo: Construir a interface visual do atendente onde as salas de chat estarão disponíveis.*
+### 💻 Fase 5: Dashboard Frontend & Painel Administrativo
+*Objetivo: Construir a interface visual do atendente onde as salas de chat estarão disponíveis e o painel do administrador.*
 
 - [x] **5.1 Tecnologias Sugeridas:** React + Vite + TypeScript (com TailwindCSS e Shadcn/UI para design premium). Configuração de ativos (logo/favicon), index.css, tema nativo e setup inicial concluídos com sucesso.
-- [ ] **5.2 Telas do Operador:**
-  - **Tela de Login:** Integração com o `auth-service` para captura de tokens JWT.
-  - **Listagem de Chamados (Sidebar):** Atualização instantânea com novos chamados entrantes (triados) utilizando conexão WebSocket no tópico `/topic/tickets`.
-  - **Área de Chat (Inbox):** Exibição reativa das mensagens enviadas e recebidas. Roteamento dinâmico baseado no ID do ticket selecionado e subscrição WebSocket em `/topic/tickets/{ticketId}`.
-  - **Barra de Ações:** Botão para assumir chamado ("Capturar"), transferir de setor, e finalizar atendimento ("Concluir").
+- [x] **5.2 Telas do Operador:**
+  - [x] **Tela de Login:** Integração com o `auth-service` para captura de tokens JWT.
+  - [x] **Listagem de Chamados (Sidebar):** Atualização instantânea com novos chamados entrantes (triados) utilizando conexão WebSocket no tópico `/topic/tickets`.
+  - [x] **Área de Chat (Inbox):** Exibição reativa das mensagens enviadas e recebidas. Roteamento dinâmico baseado no ID do ticket selecionado e subscrição WebSocket em `/topic/tickets/{ticketId}`.
+  - [x] **Barra de Ações:** Botão para assumir chamado ("Capturar"), transferir de setor, e finalizar atendimento ("Concluir").
+- [x] **5.3 Painel Administrativo / Master (`/admin`):**
+  - [x] **Dashboard de Métricas:** Estatísticas em tempo real, volumetria por setor e desempenho de SLA.
+  - [x] **Colaboradores:** Listagem e formulário de criação de novos atendentes com papéis (`USER`, `ADMIN`, `MASTER`) e setores autorizados.
+  - [x] **Clientes Corporativos:** Cadastro de empresas parceiras e vinculação de múltiplos números de WhatsApp autorizados.
+  - [x] **Gerenciador de Conectores (WhatsApp):** Painel interativo integrado à Evolution API, com criação automática de instância, exibição do QR Code na tela e atualização reativa do status por polling em tempo real.
 
 ---
 
 ### 🧪 Fase 6: Testes Integrados E2E & Segurança
 *Objetivo: Garantir a resiliência do sistema e simular cenários de alta concorrência.*
 
-- [ ] **6.1 Fluxo Ponta a Ponta:**
-  - Simular mensagem de entrada via cURL/Postman imitando o webhook da Evolution API.
-  - Verificar a resposta automática do bot e a alteração do banco.
-  - Simular captura e resposta por parte do atendente verificando a recepção no WhatsApp final.
+- [x] **6.1 Fluxo Ponta a Ponta:**
+  - [x] Simular mensagem de entrada via cURL imitando o webhook da Evolution API.
+  - [x] Verificar a resposta automática do bot e a alteração do banco.
+  - [x] Simular captura e resposta por parte do atendente verificando a recepção no WhatsApp final.
+  - [x] Testar histórico ("Fechados") e reabertura de tickets concluídos.
 - [ ] **6.2 Rate Limiting:** Validar o controle de requisições configurado no gateway do Redis contra ataques de DDoS.
 - [ ] **6.3 Robustez de Conexão:** Testar reconexão automática de WebSockets quando houver queda momentânea da rede ou reinício dos serviços de backend.
 
