@@ -44,4 +44,64 @@ public class EvolutionClient {
             log.error("Erro ao enviar mensagem via Evolution API para {}", number, e);
         }
     }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getConnectionState() {
+        try {
+            return restClient.get()
+                    .uri("/instance/connectionState/{instance}", instanceName)
+                    .header("apikey", apiKey)
+                    .retrieve()
+                    .body(Map.class);
+        } catch (Exception e) {
+            log.error("Erro ao obter estado de conexão da Evolution API", e);
+            return Map.of("instance", Map.of("state", "OFFLINE"));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> createInstance() {
+        try {
+            return restClient.post()
+                    .uri("/instance/create")
+                    .header("apikey", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                            "instanceName", instanceName,
+                            "qrcode", true,
+                            "integration", "WHATSAPP-BAILEYS"
+                    ))
+                    .retrieve()
+                    .body(Map.class);
+        } catch (Exception e) {
+            log.error("Erro ao criar instância na Evolution API", e);
+            throw new RuntimeException("Erro ao criar instância: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getQrCode() {
+        try {
+            return restClient.get()
+                    .uri("/instance/connect/{instance}", instanceName)
+                    .header("apikey", apiKey)
+                    .retrieve()
+                    .body(Map.class);
+        } catch (Exception e) {
+            log.error("Erro ao obter QR Code da Evolution API", e);
+            throw new RuntimeException("Erro ao obter QR Code: " + e.getMessage());
+        }
+    }
+
+    public void logoutInstance() {
+        try {
+            restClient.post()
+                    .uri("/instance/logout/{instance}", instanceName)
+                    .header("apikey", apiKey)
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (Exception e) {
+            log.error("Erro ao desconectar instância na Evolution API", e);
+        }
+    }
 }
