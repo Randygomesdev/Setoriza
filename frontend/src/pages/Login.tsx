@@ -155,13 +155,6 @@ export const Login: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Social / Info Footer */}
-          <div className="mt-8 pt-6 border-t border-slate-800 text-center">
-            <span className="text-xs text-slate-500">
-              Credenciais padrão de teste no arquivo CONFIGURACAO_INTEGRACOES.md
-            </span>
-          </div>
         </div>
       </div>
     </div>
