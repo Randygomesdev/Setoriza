@@ -128,3 +128,25 @@ graph TD
   - Substituir senhas padrão e credenciais locais por injeção segura de Secrets.
 - [ ] **7.3 Servidor de Ingress & SSL:** Setup do Nginx ou Traefik como Proxy Reverso, gerenciando a renovação automática de certificados SSL gratuitos via Let's Encrypt.
 - [ ] **7.4 Estratégia de Backup:** Configurar rotinas de backup automatizadas diárias do banco PostgreSQL na nuvem.
+
+---
+
+### ⚡ Fase 8: Otimizações de Mídia e Armazenamento (Pós-Lançamento)
+*Objetivo: Minimizar custos de S3/R2 através de compressão automática de arquivos e políticas de limpeza de dados.*
+
+- [x] **8.1 Regras de Ciclo de Vida do S3 (R2):** Configurar políticas de expiração automática de objetos no bucket para remover mídias anexadas a chamados com mais de 90/180 dias.
+- [x] **8.2 Compactação de Imagens (WebP):** Implementar conversão automática de imagens (PNG/JPG) para formato WebP com qualidade otimizada (80%) antes do upload para o bucket.
+- [x] **8.3 Otimização de Áudios (Opus/WebM):** Garantir que os áudios gravados pelo microfone do operador no navegador sejam capturados estritamente usando o codec Opus (altamente comprimido para voz humana) em vez de formatos brutos e pesados como WAV.
+
+---
+
+### 🎨 Fase 9: Refatoração & Componentização do Frontend (A seguir)
+*Objetivo: Desacoplar a tela única centralizada do atendente em subcomponentes isolados, melhorando a manutenibilidade, legibilidade e performance do painel.*
+
+- [ ] **9.1 Decomposição do Chat.tsx:** Segmentar a visualização monolítica em subcomponentes reutilizáveis:
+  - `ChatSidebar` (Lista de tickets e buscas).
+  - `ChatArea` (Bolhas de mensagens, inputs e gravador de áudio).
+  - `ChatDetailsSidebar` (Vínculo de clientes, histórico do ticket, listagem e download de mídias/ZIP).
+  - `ChatModals` (Modal de abertura de ticket ativo e modais adicionais).
+- [ ] **9.2 Otimização de Performance:** Refinar os seletores do Zustand no store de chat para evitar renderizações globais desnecessárias.
+- [ ] **9.3 Roteamento Avançado:** Introduzir roteamento limpo para as sub-áreas do painel.
