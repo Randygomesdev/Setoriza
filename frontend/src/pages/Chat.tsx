@@ -38,6 +38,7 @@ export const Chat: React.FC = () => {
     activeTicketId,
     messagesByTicketId,
     loading,
+    wsConnected,
     fetchTickets,
     fetchSectors,
     selectTicket,
@@ -676,9 +677,15 @@ export const Chat: React.FC = () => {
             </div>
             <div className="overflow-hidden">
               <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-200 truncate">{user?.name}</h3>
-              <span className="text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40">
-                {user?.role}
-              </span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-900/40">
+                  {user?.role}
+                </span>
+                <span className={`w-1.5 h-1.5 rounded-full ${wsConnected ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]' : 'bg-rose-500 animate-ping shadow-[0_0_8px_#f43f5e]'}`} />
+                <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+                  {wsConnected ? 'On' : 'Off'}
+                </span>
+              </div>
             </div>
           </div>
 

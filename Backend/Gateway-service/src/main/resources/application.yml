@@ -44,6 +44,17 @@ spring:
             key-resolver: "#{@ipKeyResolver}"
 
       routes:
+        - id: auth_login
+          uri: ${AUTH_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/login
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1
+                redis-rate-limiter.burstCapacity: 3
+                redis-rate-limiter.requestedTokens: 1
+                key-resolver: "#{@ipKeyResolver}"
         - id: auth_service
           uri: ${AUTH_SERVICE_URL:http://localhost:8081}
           predicates:

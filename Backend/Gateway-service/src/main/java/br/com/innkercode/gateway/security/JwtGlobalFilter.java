@@ -27,18 +27,8 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    private static final List<String> PUBLIC_PATHS = List.of(
-            "/api/v1/auth/login",
-            "/api/v1/auth/register",
-            "/api/v1/auth/forgot-password",
-            "/api/v1/auth/reset-password",
-            "/api/v1/auth/oauth2",
-            "/login/oauth2",
-            "/oauth2",
-            "/v3/api-docs",
-            "/swagger-ui",
-            "/api/v1/webhooks"
-    );
+    @Value("${gateway.public-paths:/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/forgot-password,/api/v1/auth/reset-password,/api/v1/auth/oauth2,/login/oauth2,/oauth2,/v3/api-docs,/swagger-ui,/api/v1/webhooks}")
+    private List<String> publicPaths;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -88,7 +78,7 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicPath(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
+        return publicPaths.stream().anyMatch(path::startsWith);
     }
 
     private Mono<Void> unauthorizedResponse(ServerWebExchange exchange) {

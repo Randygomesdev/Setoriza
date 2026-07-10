@@ -114,8 +114,8 @@ graph TD
   - [x] Verificar a resposta automática do bot e a alteração do banco.
   - [x] Simular captura e resposta por parte do atendente verificando a recepção no WhatsApp final.
   - [x] Testar histórico ("Fechados") e reabertura de tickets concluídos.
-- [ ] **6.2 Rate Limiting:** Validar o controle de requisições configurado no gateway do Redis contra ataques de DDoS.
-- [ ] **6.3 Robustez de Conexão:** Testar reconexão automática de WebSockets quando houver queda momentânea da rede ou reinício dos serviços de backend.
+- [x] **6.2 Rate Limiting:** Validar o controle de requisições configurado no gateway do Redis contra ataques de DDoS.
+- [x] **6.3 Robustez de Conexão:** Testar reconexão automática de WebSockets quando houver queda momentânea da rede ou reinício dos serviços de backend.
 
 ---
 
