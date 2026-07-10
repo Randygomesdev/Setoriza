@@ -58,6 +58,9 @@ public class SectorController {
         sector.setName(sectorDetails.getName());
         sector.setFriendlyName(sectorDetails.getFriendlyName());
         sector.setActive(sectorDetails.isActive());
+        if (sectorDetails.getSlaLimitMinutes() != null) {
+            sector.setSlaLimitMinutes(sectorDetails.getSlaLimitMinutes());
+        }
         return ResponseEntity.ok(sectorRepository.save(sector));
     }
 
@@ -66,13 +69,14 @@ public class SectorController {
             @PathVariable UUID id,
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        log.info("Removendo setor ID: {}. Solicitante role: {}", id, userRole);
+        log.info("Desativando setor ID (soft delete): {}. Solicitante role: {}", id, userRole);
         if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         Sector sector = sectorRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Setor não encontrado"));
-        sectorRepository.delete(sector);
+        sector.setActive(false);
+        sectorRepository.save(sector);
         return ResponseEntity.ok().build();
     }
 }

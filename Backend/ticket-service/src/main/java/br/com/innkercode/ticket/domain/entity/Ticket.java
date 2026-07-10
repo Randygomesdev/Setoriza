@@ -4,6 +4,7 @@ import br.com.innkercode.ticket.domain.model.TicketStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -22,6 +23,10 @@ public class Ticket extends BaseEntity {
     @Column(name = "client_id")
     private UUID clientId;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "client_id", insertable = false, updatable = false)
+    private Client client;
+
     @Column(name = "assigned_agent_id")
     private UUID assignedAgentId;
 
@@ -38,4 +43,13 @@ public class Ticket extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private TicketStatus status;
+
+    @Column(name = "queued_at")
+    private LocalDateTime queuedAt;
+
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
 }

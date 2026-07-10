@@ -26,4 +26,8 @@ public class Sector extends BaseEntity {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Column(name = "sla_limit_minutes", nullable = false)
+    @Builder.Default
+    private Integer slaLimitMinutes = 15;
 }
