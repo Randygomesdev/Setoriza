@@ -11,4 +11,5 @@ import java.util.UUID;
 public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     List<Message> findByTicketIdOrderBySentAtAsc(UUID ticketId);
+    java.util.Optional<Message> findByWhatsappMsgId(String whatsappMsgId);
 }

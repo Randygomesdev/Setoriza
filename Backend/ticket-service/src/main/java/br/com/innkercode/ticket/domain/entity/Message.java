@@ -39,10 +39,19 @@ public class Message {
     @Column(name = "sent_at", nullable = false)
     private LocalDateTime sentAt;
 
+    @Column(name = "whatsapp_msg_id")
+    private String whatsappMsgId;
+
+    @Column(name = "status", nullable = false)
+    private String status;
+
     @PrePersist
     protected void onCreate() {
         if (sentAt == null) {
             sentAt = LocalDateTime.now();
+        }
+        if (status == null) {
+            status = "SENT";
         }
     }
 }
