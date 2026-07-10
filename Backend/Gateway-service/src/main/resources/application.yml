@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: gateway-service
+  codec:
+    max-in-memory-size: 50MB
 
   config:
     import:

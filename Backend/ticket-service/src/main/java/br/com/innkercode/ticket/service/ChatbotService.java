@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -47,6 +48,11 @@ public class ChatbotService {
             return;
         }
 
+        log.info("Processando webhook da Evolution API: Evento={}, ID={}, Remetente={}", 
+                payload.getEvent(), 
+                payload.getData().getKey().getId(), 
+                payload.getData().getKey().getRemoteJid());
+
         // Ignorar mensagens enviadas pela própria API (evita loops)
         if (payload.getData().getKey().isFromMe()) {
             log.debug("Ignorando mensagem enviada pela própria API (fromMe = true).");
@@ -59,18 +65,25 @@ public class ChatbotService {
             return;
         }
 
-        String senderNumber = payload.getSender();
-        if (senderNumber == null || senderNumber.isBlank()) {
-            log.warn("Mensagem sem número de remetente.");
+        String remoteJid = payload.getData().getKey().getRemoteJid();
+        if (remoteJid == null || remoteJid.isBlank()) {
+            log.warn("Mensagem sem JID de remetente.");
             return;
         }
+
+        if (remoteJid.contains("@g.us")) {
+            log.debug("Ignorando mensagem de grupo: {}", remoteJid);
+            return;
+        }
+
+        String senderNumber = remoteJid.contains("@") ? remoteJid.split("@")[0] : remoteJid;
 
         // Determinar o tipo da mensagem e conteúdo
         MessageType messageType = MessageType.TEXTO;
         String content = extractTextContent(payload.getData().getMessage());
 
         // Verificar se é uma mensagem de mídia
-        String mediaUrl = handleMediaMessage(payload.getData().getMessage());
+        String mediaUrl = handleMediaMessage(payload.getData(), payload.getData().getMessage());
         if (mediaUrl != null) {
             content = mediaUrl;
             messageType = determineMessageType(payload.getData().getMessage());
@@ -104,7 +117,7 @@ public class ChatbotService {
             Ticket ticket = ticketService.createIdentificationTicket(senderNumber, clientName);
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
             
-            sendCnpjRequest(senderNumber);
+            sendCnpjRequest(ticket);
         } else {
             Ticket ticket = activeTicketOpt.get();
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
@@ -113,8 +126,9 @@ public class ChatbotService {
                 if (messageType == MessageType.TEXTO) {
                     handleCnpjInput(ticket, content, clientName);
                 } else {
-                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), 
-                            "Por favor, informe o CNPJ da sua empresa (somente números) em formato de texto para podermos identificar seu cadastro.");
+                    String botMsg = "Por favor, informe o CNPJ da sua empresa (somente números) em formato de texto para podermos identificar seu cadastro.";
+                    messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
+                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
                 }
             } else {
                 log.warn("Ticket {} de número desconhecido está em status inesperado: {}", ticket.getId(), ticket.getStatus());
@@ -130,7 +144,7 @@ public class ChatbotService {
             Ticket ticket = ticketService.createTriageTicket(contact.getWhatsappNumber(), clientName, contact.getClient().getId());
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
 
-            sendTriageMenu(contact.getWhatsappNumber(), contact.getClient().getCompanyName());
+            sendTriageMenu(ticket, contact.getClient().getCompanyName());
         } else {
             Ticket ticket = activeTicketOpt.get();
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
@@ -139,8 +153,9 @@ public class ChatbotService {
                 if (messageType == MessageType.TEXTO) {
                     handleTriageInput(ticket, content);
                 } else {
-                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), 
-                            "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.");
+                    String botMsg = "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.";
+                    messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
+                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
                 }
             } else {
                 log.info("Ticket {} ativo em status {}, mensagem recebida.", ticket.getId(), ticket.getStatus());
@@ -148,10 +163,11 @@ public class ChatbotService {
         }
     }
 
-    private void sendCnpjRequest(String whatsappNumber) {
+    private void sendCnpjRequest(Ticket ticket) {
         String msg = "Olá! Não identifiquei o seu número em nosso cadastro de atendimentos.\n\n" +
                      "Por favor, digite o *CNPJ da sua empresa* (somente números) para que eu possa localizar o seu cadastro:";
-        evolutionClient.sendTextMessage(whatsappNumber, msg);
+        messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, msg);
+        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), msg);
     }
 
     private void handleCnpjInput(Ticket ticket, String input, String pushName) {
@@ -176,22 +192,24 @@ public class ChatbotService {
             ticketService.promoteToTriage(ticket.getId(), client.getId());
 
             // 3. Enviar mensagem de sucesso e menu de triagem
-            sendTriageMenu(ticket.getWhatsappNumber(), client.getCompanyName());
+            sendTriageMenu(ticket, client.getCompanyName());
         } else {
             log.warn("CNPJ {} não cadastrado no sistema.", cleanCnpj);
             String errorMsg = "⚠️ Desculpe, não localizei nenhuma empresa cadastrada com o CNPJ informado.\n\n" +
                               "Por favor, verifique o número e digite novamente (somente números), ou entre em contato com nosso suporte administrativo para atualizar o cadastro.";
+            messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, errorMsg);
             evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
         }
     }
 
-    private void sendTriageMenu(String whatsappNumber, String companyName) {
+    private void sendTriageMenu(Ticket ticket, String companyName) {
         List<Sector> activeSectors = sectorRepository.findByActiveTrue();
 
         if (activeSectors.isEmpty()) {
             String errorMsg = "Olá! Identificamos a empresa " + companyName + ".\n\n" +
                               "Infelizmente não há nenhum setor de atendimento configurado no momento. Por favor, aguarde ou fale com o administrador.";
-            evolutionClient.sendTextMessage(whatsappNumber, errorMsg);
+            messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, errorMsg);
+            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
             return;
         }
 
@@ -203,7 +221,9 @@ public class ChatbotService {
             sb.append(i + 1).append(" - ").append(activeSectors.get(i).getFriendlyName()).append("\n");
         }
 
-        evolutionClient.sendTextMessage(whatsappNumber, sb.toString());
+        String triageMsg = sb.toString();
+        messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, triageMsg);
+        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), triageMsg);
     }
 
     private void handleTriageInput(Ticket ticket, String input) {
@@ -225,20 +245,23 @@ public class ChatbotService {
                     "Entendi! Você foi encaminhado para o setor de *%s*. Aguarde que logo um atendente irá falar com você.",
                     selectedSector.getFriendlyName()
             );
+            messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, confirmationMessage);
             evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), confirmationMessage);
         } else {
             // Entrada inválida, reenviar menu
-            sendInvalidOptionMenu(ticket.getWhatsappNumber(), activeSectors);
+            sendInvalidOptionMenu(ticket, activeSectors);
         }
     }
 
-    private void sendInvalidOptionMenu(String whatsappNumber, List<Sector> activeSectors) {
+    private void sendInvalidOptionMenu(Ticket ticket, List<Sector> activeSectors) {
         StringBuilder sb = new StringBuilder();
         sb.append("❌ Opção inválida. Por favor, digite apenas o número correspondente ao setor desejado:\n\n");
         for (int i = 0; i < activeSectors.size(); i++) {
             sb.append(i + 1).append(" - ").append(activeSectors.get(i).getFriendlyName()).append("\n");
         }
-        evolutionClient.sendTextMessage(whatsappNumber, sb.toString());
+        String invalidMsg = sb.toString();
+        messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, invalidMsg);
+        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), invalidMsg);
     }
 
     private String extractTextContent(WebhookPayload.WebhookMessage msg) {
@@ -261,10 +284,10 @@ public class ChatbotService {
         return MessageType.TEXTO;
     }
 
-    private String handleMediaMessage(WebhookPayload.WebhookMessage msg) {
+    private String handleMediaMessage(Object messageData, WebhookPayload.WebhookMessage msg) {
         if (msg == null) return null;
 
-        WebhookPayload.MediaMessage media = null;
+        Map<String, Object> media = null;
         if (msg.getImageMessage() != null) {
             media = msg.getImageMessage();
         } else if (msg.getAudioMessage() != null) {
@@ -275,21 +298,54 @@ public class ChatbotService {
             media = msg.getDocumentMessage();
         }
 
-        if (media == null || media.getUrl() == null) {
+        if (media == null) {
             return null;
         }
 
         try {
-            log.info("Baixando mídia temporária do WhatsApp Gateway: {}", media.getUrl());
-            byte[] fileBytes = restClient.get()
-                    .uri(media.getUrl())
-                    .header("apikey", apiKey)
-                    .retrieve()
-                    .body(byte[].class);
+            log.info("Mídia encontrada no payload (chaves: {}). Buscando Base64 no WhatsApp Gateway...", media.keySet());
+            Object mKey = media.get("mediaKey");
+            if (mKey != null) {
+                log.info("mediaKey type: {}, value: {}", mKey.getClass().getName(), mKey);
+            } else {
+                log.warn("mediaKey is NULL!");
+            }
+            String base64Data = evolutionClient.getBase64FromMediaMessage(messageData);
+            if (base64Data == null || base64Data.isBlank()) {
+                return null;
+            }
+
+            byte[] fileBytes;
+            if (base64Data.contains("base64,")) {
+                String base64Str = base64Data.split("base64,")[1];
+                fileBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
+            } else {
+                fileBytes = java.util.Base64.getDecoder().decode(base64Data.trim());
+            }
 
             if (fileBytes != null && fileBytes.length > 0) {
-                String originalFilename = media.getFileName() != null ? media.getFileName() : "media_" + UUID.randomUUID();
-                String contentType = media.getMimetype() != null ? media.getMimetype() : "application/octet-stream";
+                String originalFilename = media.get("fileName") != null ? (String) media.get("fileName") : null;
+                String contentType = media.get("mimetype") != null ? (String) media.get("mimetype") : "application/octet-stream";
+
+                if (originalFilename == null) {
+                    String extension = "";
+                    if (contentType.contains("audio/ogg") || contentType.contains("audio/opus") || contentType.contains("ogg")) {
+                        extension = ".ogg";
+                    } else if (contentType.contains("audio/mp4") || contentType.contains("audio/m4a") || contentType.contains("m4a")) {
+                        extension = ".m4a";
+                    } else if (contentType.contains("audio/mpeg") || contentType.contains("audio/mp3") || contentType.contains("mp3")) {
+                        extension = ".mp3";
+                    } else if (contentType.contains("video/mp4")) {
+                        extension = ".mp4";
+                    } else if (contentType.contains("image/jpeg")) {
+                        extension = ".jpg";
+                    } else if (contentType.contains("image/png")) {
+                        extension = ".png";
+                    } else if (contentType.contains("application/pdf")) {
+                        extension = ".pdf";
+                    }
+                    originalFilename = "media_" + UUID.randomUUID() + extension;
+                }
 
                 return s3Service.uploadFile(originalFilename, fileBytes, contentType);
             }

@@ -2,6 +2,7 @@ package br.com.innkercode.ticket.dto.webhook;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
+import java.util.Map;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -34,24 +35,15 @@ public class WebhookPayload {
     public static class WebhookMessage {
         private String conversation;
         private ExtendedTextMessage extendedTextMessage;
-        private MediaMessage imageMessage;
-        private MediaMessage audioMessage;
-        private MediaMessage videoMessage;
-        private MediaMessage documentMessage;
+        private Map<String, Object> imageMessage;
+        private Map<String, Object> audioMessage;
+        private Map<String, Object> videoMessage;
+        private Map<String, Object> documentMessage;
     }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ExtendedTextMessage {
         private String text;
-    }
-
-    @Data
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class MediaMessage {
-        private String url;
-        private String mimetype;
-        private String caption;
-        private String fileName;
     }
 }

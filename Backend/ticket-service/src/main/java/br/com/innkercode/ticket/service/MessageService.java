@@ -24,6 +24,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final TicketEventPublisher eventPublisher;
     private final EvolutionClient evolutionClient;
+    private final S3Service s3Service;
 
     public List<Message> getMessagesByTicketId(UUID ticketId) {
         return messageRepository.findByTicketIdOrderBySentAtAsc(ticketId);
@@ -54,6 +55,51 @@ public class MessageService {
         evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), content);
         
         // 3. Publica evento de envio de resposta humana
+        eventPublisher.publish("MESSAGE_SENT_BY_AGENT", ticket.getId().toString(), savedMessage);
+
+        return savedMessage;
+    }
+
+    @Transactional
+    public Message sendOperatorMediaMessage(Ticket ticket, byte[] fileBytes, String originalFilename, String contentType, String caption) {
+        log.info("Processando envio de resposta humana com mídia para o ticket: {} - {}", ticket.getId(), ticket.getWhatsappNumber());
+        
+        // 1. Fazer upload do arquivo para o S3
+        String s3Url = s3Service.uploadFile(originalFilename, fileBytes, contentType);
+        
+        // 2. Determinar o tipo da mensagem
+        MessageType messageType = MessageType.DOCUMENTO;
+        if (contentType != null && contentType.startsWith("image/")) {
+            messageType = MessageType.IMAGEM;
+        }
+        
+        // 3. Salvar a mensagem no banco local como COLABORADOR
+        Message savedMessage = saveMessage(ticket, SenderType.COLABORADOR, messageType, s3Url);
+        
+        // 4. Determinar o mediatype para a Evolution API
+        String mediatype = "document";
+        if (contentType != null) {
+            if (contentType.startsWith("image/")) {
+                mediatype = "image";
+            } else if (contentType.startsWith("video/")) {
+                mediatype = "video";
+            } else if (contentType.startsWith("audio/")) {
+                mediatype = "audio";
+            }
+        }
+        
+        // 5. Dispara a mensagem para o cliente via Evolution API
+        String base64Media = java.util.Base64.getEncoder().encodeToString(fileBytes);
+        evolutionClient.sendMediaMessage(
+                ticket.getWhatsappNumber(), 
+                base64Media, 
+                mediatype, 
+                contentType, 
+                originalFilename, 
+                caption
+        );
+        
+        // 6. Publica evento de envio de resposta humana
         eventPublisher.publish("MESSAGE_SENT_BY_AGENT", ticket.getId().toString(), savedMessage);
 
         return savedMessage;
