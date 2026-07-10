@@ -162,7 +162,11 @@ export const Admin: React.FC = () => {
     name: '',
     friendlyName: '',
     slaLimitMinutes: 15,
-    active: true
+    active: true,
+    autoCloseEnabled: false,
+    autoCloseTimeoutMinutes: 60,
+    autoCloseWarningMinutes: 45,
+    autoCloseWarningMessage: 'Olá! Notamos que você não respondeu há algum tempo. Para manter nossa fila organizada, este atendimento será encerrado automaticamente em breve caso não haja retorno.'
   });
 
   // Drawer states
@@ -1356,7 +1360,16 @@ export const Admin: React.FC = () => {
                 <button
                   onClick={() => {
                     setEditingSector(null);
-                    setNewSector({ name: '', friendlyName: '', slaLimitMinutes: 15, active: true });
+                    setNewSector({ 
+                      name: '', 
+                      friendlyName: '', 
+                      slaLimitMinutes: 15, 
+                      active: true,
+                      autoCloseEnabled: false,
+                      autoCloseTimeoutMinutes: 60,
+                      autoCloseWarningMinutes: 45,
+                      autoCloseWarningMessage: 'Olá! Notamos que você não respondeu há algum tempo. Para manter nossa fila organizada, este atendimento será encerrado automaticamente em breve caso não haja retorno.'
+                    });
                     setSectorSuccessMsg('');
                     setIsSectorDrawerOpen(true);
                   }}
@@ -1384,6 +1397,7 @@ export const Admin: React.FC = () => {
                     <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                       <th className="py-3 px-4">Nome do Setor</th>
                       <th className="py-3 px-4">Meta SLA</th>
+                      <th className="py-3 px-4">Fechamento Automático</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4 text-right">Ações</th>
                     </tr>
@@ -1394,6 +1408,13 @@ export const Admin: React.FC = () => {
                         <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200">{sect.friendlyName}</td>
                         <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400">
                           <span className="font-bold text-blue-600 dark:text-blue-400">{sect.slaLimitMinutes || 15}</span> minutos
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400">
+                          {sect.autoCloseEnabled ? (
+                            <span className="font-bold text-amber-600 dark:text-amber-400">Ativo ({sect.autoCloseTimeoutMinutes} min)</span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-600 italic">Inativo</span>
+                          )}
                         </td>
                         <td className="py-3.5 px-4">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1413,7 +1434,11 @@ export const Admin: React.FC = () => {
                                   name: sect.name,
                                   friendlyName: sect.friendlyName,
                                   active: sect.active,
-                                  slaLimitMinutes: sect.slaLimitMinutes || 15
+                                  slaLimitMinutes: sect.slaLimitMinutes || 15,
+                                  autoCloseEnabled: sect.autoCloseEnabled || false,
+                                  autoCloseTimeoutMinutes: sect.autoCloseTimeoutMinutes || 60,
+                                  autoCloseWarningMinutes: sect.autoCloseWarningMinutes || 45,
+                                  autoCloseWarningMessage: sect.autoCloseWarningMessage || 'Olá! Notamos que você não respondeu há algum tempo. Para manter nossa fila organizada, este atendimento será encerrado automaticamente em breve caso não haja retorno.'
                                 });
                                 setSectorSuccessMsg('');
                                 setIsSectorDrawerOpen(true);
@@ -1949,7 +1974,11 @@ export const Admin: React.FC = () => {
                         name: editingSector.name,
                         friendlyName: editingSector.friendlyName,
                         active: editingSector.active,
-                        slaLimitMinutes: parseInt(editingSector.slaLimitMinutes.toString(), 10) || 15
+                        slaLimitMinutes: parseInt(editingSector.slaLimitMinutes.toString(), 10) || 15,
+                        autoCloseEnabled: editingSector.autoCloseEnabled || false,
+                        autoCloseTimeoutMinutes: parseInt(editingSector.autoCloseTimeoutMinutes.toString(), 10) || 60,
+                        autoCloseWarningMinutes: parseInt(editingSector.autoCloseWarningMinutes.toString(), 10) || 45,
+                        autoCloseWarningMessage: editingSector.autoCloseWarningMessage
                       });
                       setSectorSuccessMsg('Setor e SLA atualizados com sucesso!');
                       await loadData();
@@ -2002,6 +2031,60 @@ export const Admin: React.FC = () => {
                     <label htmlFor="sectorActiveCheckbox" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Setor Habilitado (Ativo)</label>
                   </div>
 
+                  <div className="flex items-center gap-2 py-1 border-t border-slate-100 dark:border-slate-800/60 pt-3">
+                    <input 
+                      type="checkbox"
+                      id="sectorAutoCloseCheckbox"
+                      checked={editingSector.autoCloseEnabled}
+                      onChange={e => setEditingSector({...editingSector, autoCloseEnabled: e.target.checked})}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="sectorAutoCloseCheckbox" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Habilitar Encerramento Automático</label>
+                  </div>
+
+                  {editingSector.autoCloseEnabled && (
+                    <div className="space-y-4 border-l-2 border-slate-200 dark:border-slate-800 pl-3 py-1 space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tempo de Inatividade para Fechar (Minutos)</label>
+                        <input 
+                          type="number"
+                          required
+                          min={5}
+                          value={editingSector.autoCloseTimeoutMinutes}
+                          onChange={e => setEditingSector({...editingSector, autoCloseTimeoutMinutes: parseInt(e.target.value, 10) || 60})}
+                          className="w-full py-2 px-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tempo para Enviar Aviso Prévio (Minutos)</label>
+                        <input 
+                          type="number"
+                          required
+                          min={1}
+                          max={editingSector.autoCloseTimeoutMinutes - 1}
+                          value={editingSector.autoCloseWarningMinutes}
+                          onChange={e => setEditingSector({...editingSector, autoCloseWarningMinutes: parseInt(e.target.value, 10) || 45})}
+                          className="w-full py-2 px-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <span className="text-[9px] text-slate-450 dark:text-slate-500 block">
+                          Deve ser menor do que o tempo limite de encerramento.
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mensagem de Alerta do Chatbot</label>
+                        <textarea 
+                          required
+                          rows={3}
+                          value={editingSector.autoCloseWarningMessage}
+                          onChange={e => setEditingSector({...editingSector, autoCloseWarningMessage: e.target.value})}
+                          className="w-full py-2 px-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2 pt-2">
                     <button
                       type="submit"
@@ -2032,14 +2115,22 @@ export const Admin: React.FC = () => {
                         name: formatTechnicalName(newSector.friendlyName),
                         friendlyName: newSector.friendlyName,
                         active: newSector.active,
-                        slaLimitMinutes: parseInt(newSector.slaLimitMinutes.toString(), 10) || 15
+                        slaLimitMinutes: parseInt(newSector.slaLimitMinutes.toString(), 10) || 15,
+                        autoCloseEnabled: newSector.autoCloseEnabled,
+                        autoCloseTimeoutMinutes: newSector.autoCloseTimeoutMinutes,
+                        autoCloseWarningMinutes: newSector.autoCloseWarningMinutes,
+                        autoCloseWarningMessage: newSector.autoCloseWarningMessage
                       });
                       setSectorSuccessMsg('Novo setor cadastrado com sucesso!');
                       setNewSector({
                         name: '',
                         friendlyName: '',
                         slaLimitMinutes: 15,
-                        active: true
+                        active: true,
+                        autoCloseEnabled: false,
+                        autoCloseTimeoutMinutes: 60,
+                        autoCloseWarningMinutes: 45,
+                        autoCloseWarningMessage: 'Olá! Notamos que você não respondeu há algum tempo. Para manter nossa fila organizada, este atendimento será encerrado automaticamente em breve caso não haja retorno.'
                       });
                       await loadData();
                       setTimeout(() => {
@@ -2087,6 +2178,60 @@ export const Admin: React.FC = () => {
                     />
                     <label htmlFor="newSectorActiveCheckbox" className="text-xs font-semibold text-slate-700 dark:text-slate-350">Setor Habilitado (Ativo)</label>
                   </div>
+
+                  <div className="flex items-center gap-2 py-1 border-t border-slate-100 dark:border-slate-800/60 pt-3">
+                    <input 
+                      type="checkbox"
+                      id="newSectorAutoCloseCheckbox"
+                      checked={newSector.autoCloseEnabled}
+                      onChange={e => setNewSector({...newSector, autoCloseEnabled: e.target.checked})}
+                      className="rounded text-blue-600 focus:ring-blue-500"
+                    />
+                    <label htmlFor="newSectorAutoCloseCheckbox" className="text-xs font-semibold text-slate-700 dark:text-slate-350">Habilitar Encerramento Automático</label>
+                  </div>
+
+                  {newSector.autoCloseEnabled && (
+                    <div className="space-y-4 border-l-2 border-slate-200 dark:border-slate-800 pl-3 py-1 space-y-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tempo de Inatividade para Fechar (Minutos)</label>
+                        <input 
+                          type="number"
+                          required
+                          min={5}
+                          value={newSector.autoCloseTimeoutMinutes}
+                          onChange={e => setNewSector({...newSector, autoCloseTimeoutMinutes: parseInt(e.target.value, 10) || 60})}
+                          className="w-full py-2 px-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tempo para Enviar Aviso Prévio (Minutos)</label>
+                        <input 
+                          type="number"
+                          required
+                          min={1}
+                          max={newSector.autoCloseTimeoutMinutes - 1}
+                          value={newSector.autoCloseWarningMinutes}
+                          onChange={e => setNewSector({...newSector, autoCloseWarningMinutes: parseInt(e.target.value, 10) || 45})}
+                          className="w-full py-2 px-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <span className="text-[9px] text-slate-450 dark:text-slate-500 block">
+                          Deve ser menor do que o tempo limite de encerramento.
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Mensagem de Alerta do Chatbot</label>
+                        <textarea 
+                          required
+                          rows={3}
+                          value={newSector.autoCloseWarningMessage}
+                          onChange={e => setNewSector({...newSector, autoCloseWarningMessage: e.target.value})}
+                          className="w-full py-2 px-3 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <button
                     type="submit"

@@ -189,13 +189,31 @@ export const api = {
     list: async () => {
       return request<any[]>('/sectors');
     },
-    create: async (sector: { name: string; friendlyName: string; active: boolean; slaLimitMinutes: number }) => {
+    create: async (sector: { 
+      name: string; 
+      friendlyName: string; 
+      active: boolean; 
+      slaLimitMinutes: number;
+      autoCloseEnabled?: boolean;
+      autoCloseTimeoutMinutes?: number;
+      autoCloseWarningMinutes?: number;
+      autoCloseWarningMessage?: string;
+    }) => {
       return request<any>('/sectors', {
         method: 'POST',
         body: JSON.stringify(sector),
       });
     },
-    update: async (id: string, sector: { name: string; friendlyName: string; active: boolean; slaLimitMinutes: number }) => {
+    update: async (id: string, sector: { 
+      name: string; 
+      friendlyName: string; 
+      active: boolean; 
+      slaLimitMinutes: number;
+      autoCloseEnabled?: boolean;
+      autoCloseTimeoutMinutes?: number;
+      autoCloseWarningMinutes?: number;
+      autoCloseWarningMessage?: string;
+    }) => {
       return request<any>(`/sectors/${id}`, {
         method: 'PUT',
         body: JSON.stringify(sector),
