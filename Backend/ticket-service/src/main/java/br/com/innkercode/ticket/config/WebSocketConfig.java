@@ -13,6 +13,11 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Configuration
@@ -21,6 +26,9 @@ import java.util.Map;
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final AuthChannelInterceptor authChannelInterceptor;
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
@@ -37,8 +45,20 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                                            WebSocketHandler wsHandler, Map<String, Object> attributes) {
                 if (request instanceof ServletServerHttpRequest servletRequest) {
                     String token = servletRequest.getServletRequest().getParameter("token");
-                    if (token != null && !token.isBlank()) {
+                    if (token == null || token.isBlank()) {
+                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                        return false;
+                    }
+                    try {
+                        Jwts.parser()
+                                .verifyWith(Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8)))
+                                .build()
+                                .parseSignedClaims(token);
+                        
                         attributes.put("token", token);
+                    } catch (Exception e) {
+                        response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                        return false;
                     }
                 }
                 return true;
