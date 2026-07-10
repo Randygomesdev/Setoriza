@@ -91,6 +91,53 @@ export const api = {
       return request<any[]>(`/tickets${queryString ? `?${queryString}` : ''}`);
     },
     
+    create: async (whatsappNumber: string, clientName: string, sectorId: string) => {
+      return request<any>('/tickets', {
+        method: 'POST',
+        body: JSON.stringify({ whatsappNumber, clientName, sectorId }),
+      });
+    },
+
+    history: async (filters: {
+      status?: string[];
+      sectorId?: string;
+      assignedAgentId?: string;
+      clientQuery?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      size?: number;
+    } = {}) => {
+      const params = new URLSearchParams();
+      if (filters.status) {
+        filters.status.forEach((s) => params.append('status', s));
+      }
+      if (filters.sectorId) {
+        params.append('sectorId', filters.sectorId);
+      }
+      if (filters.assignedAgentId) {
+        params.append('assignedAgentId', filters.assignedAgentId);
+      }
+      if (filters.clientQuery) {
+        params.append('clientQuery', filters.clientQuery);
+      }
+      if (filters.startDate) {
+        params.append('startDate', filters.startDate);
+      }
+      if (filters.endDate) {
+        params.append('endDate', filters.endDate);
+      }
+      if (filters.page !== undefined) {
+        params.append('page', String(filters.page));
+      }
+      if (filters.size !== undefined) {
+        params.append('size', String(filters.size));
+      }
+      
+      const queryString = params.toString();
+      return request<any>(`/tickets/history${queryString ? `?${queryString}` : ''}`);
+    },
+    
     claim: async (id: string) => {
       return request<any>(`/tickets/${id}/claim`, {
         method: 'POST',
@@ -120,11 +167,44 @@ export const api = {
         body: JSON.stringify({ content }),
       });
     },
+    
+    sendMediaMessage: async (id: string, file: File, caption?: string) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (caption) {
+        formData.append('caption', caption);
+      }
+      return request<any>(`/tickets/${id}/messages/media`, {
+        method: 'POST',
+        body: formData,
+      });
+    },
+
+    getSlaMetrics: async () => {
+      return request<any>('/tickets/sla-metrics');
+    },
   },
   
   sectors: {
     list: async () => {
       return request<any[]>('/sectors');
+    },
+    create: async (sector: { name: string; friendlyName: string; active: boolean; slaLimitMinutes: number }) => {
+      return request<any>('/sectors', {
+        method: 'POST',
+        body: JSON.stringify(sector),
+      });
+    },
+    update: async (id: string, sector: { name: string; friendlyName: string; active: boolean; slaLimitMinutes: number }) => {
+      return request<any>(`/sectors/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(sector),
+      });
+    },
+    delete: async (id: string) => {
+      return request<void>(`/sectors/${id}`, {
+        method: 'DELETE',
+      });
     },
   },
 
@@ -138,9 +218,18 @@ export const api = {
         body: JSON.stringify(user),
       });
     },
+    update: async (id: string, user: { name: string; role: string; sectors: string }) => {
+      return request<any>(`/users/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(user),
+      });
+    },
   },
   
   clients: {
+    listContacts: async () => {
+      return request<any[]>('/clients/contacts');
+    },
     list: async () => {
       return request<any[]>('/clients');
     },
@@ -167,6 +256,11 @@ export const api = {
         body: JSON.stringify(contact),
       });
     },
+    deleteContact: async (clientId: string, contactId: string) => {
+      return request<void>(`/clients/${clientId}/contacts/${contactId}`, {
+        method: 'DELETE',
+      });
+    },
   },
 
   integration: {
@@ -184,6 +278,12 @@ export const api = {
     logout: async () => {
       return request<void>('/tickets/integration/logout', {
         method: 'POST',
+      });
+    },
+    configureWebhook: async (serverUrl: string) => {
+      return request<any>('/tickets/integration/webhook', {
+        method: 'POST',
+        body: JSON.stringify({ serverUrl }),
       });
     },
   },

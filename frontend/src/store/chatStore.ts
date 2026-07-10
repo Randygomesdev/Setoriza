@@ -8,14 +8,24 @@ export interface Sector {
   active: boolean;
 }
 
+export interface Client {
+  id: string;
+  cnpj: string;
+  companyName: string;
+}
+
 export interface Ticket {
   id: string;
   clientId: string | null;
+  client?: Client | null;
   assignedAgentId: string | null;
   whatsappNumber: string;
   clientName: string | null;
   sector: Sector | null;
   status: 'IDENTIFICACAO_CNPJ' | 'IDENTIFICACAO_NOME' | 'TRIAGEM' | 'AGUARDANDO_ATENDIMENTO' | 'EM_ANDAMENTO' | 'CONCLUIDO';
+  createdAt?: string;
+  updatedAt?: string;
+  resolvedAt?: string;
 }
 
 export interface Message {
@@ -48,6 +58,8 @@ interface ChatState {
   resolveTicket: (ticketId: string) => Promise<void>;
   transferTicket: (ticketId: string, targetSectorId?: string, targetAgentId?: string) => Promise<void>;
   sendOperatorMessage: (ticketId: string, content: string) => Promise<void>;
+  sendOperatorMediaMessage: (ticketId: string, file: File, caption?: string) => Promise<void>;
+  createTicket: (whatsappNumber: string, clientName: string, sectorId: string) => Promise<any>;
   handleWebSocketEvent: (event: TicketEvent) => void;
 }
 
@@ -130,6 +142,20 @@ export const useChatStore = create<ChatState>((set) => ({
     }
   },
 
+  createTicket: async (whatsappNumber: string, clientName: string, sectorId: string) => {
+    try {
+      const newTicket = await api.tickets.create(whatsappNumber, clientName, sectorId);
+      set((state) => ({
+        tickets: [newTicket, ...state.tickets],
+        activeTicketId: newTicket.id,
+      }));
+      return newTicket;
+    } catch (err: any) {
+      alert(`Erro ao abrir chamado: ${err.message}`);
+      throw err;
+    }
+  },
+
   transferTicket: async (ticketId: string, targetSectorId?: string, targetAgentId?: string) => {
     try {
       const updatedTicket = await api.tickets.transfer(ticketId, targetSectorId, targetAgentId);
@@ -173,6 +199,36 @@ export const useChatStore = create<ChatState>((set) => ({
       });
     } catch (err: any) {
       alert(`Erro ao enviar mensagem: ${err.message}`);
+    }
+  },
+
+  sendOperatorMediaMessage: async (ticketId: string, file: File, caption?: string) => {
+    try {
+      const sentMessage = await api.tickets.sendMediaMessage(ticketId, file, caption);
+      
+      const formattedMessage: Message = {
+        id: sentMessage.id,
+        ticketId: sentMessage.ticketId,
+        senderType: sentMessage.senderType,
+        messageType: sentMessage.messageType,
+        content: sentMessage.content,
+        sentAt: sentMessage.sentAt || new Date().toISOString(),
+      };
+
+      set((state) => {
+        const ticketMessages = state.messagesByTicketId[ticketId] || [];
+        if (ticketMessages.some((m) => m.id === formattedMessage.id)) {
+          return state;
+        }
+        return {
+          messagesByTicketId: {
+            ...state.messagesByTicketId,
+            [ticketId]: [...ticketMessages, formattedMessage],
+          },
+        };
+      });
+    } catch (err: any) {
+      alert(`Erro ao enviar arquivo: ${err.message}`);
     }
   },
 
