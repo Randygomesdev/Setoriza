@@ -20,6 +20,10 @@ public class WebhookPayload {
         private String pushName;
         private String messageType;
         private WebhookMessage message;
+        private String keyId;
+        private String remoteJid;
+        private boolean fromMe;
+        private String status;
     }
 
     @Data

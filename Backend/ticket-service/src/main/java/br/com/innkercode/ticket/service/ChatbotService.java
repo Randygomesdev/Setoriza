@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import br.com.innkercode.ticket.util.ImageCompressor;
 
 import java.util.List;
 import java.util.Map;
@@ -43,13 +44,31 @@ public class ChatbotService {
     private final RestClient restClient = RestClient.create();
 
     public void processIncomingWebhook(WebhookPayload payload) {
-        if (payload == null || payload.getData() == null || payload.getData().getKey() == null) {
+        if (payload == null || payload.getData() == null) {
             log.warn("Payload de webhook inválido recebido.");
             return;
         }
 
+        String event = payload.getEvent();
+
+        // 1. Process messages.update (delivery checkmarks)
+        if ("messages.update".equals(event)) {
+            String keyId = payload.getData().getKeyId();
+            String status = payload.getData().getStatus();
+            if (keyId != null && status != null) {
+                messageService.updateMessageStatus(keyId, status);
+            }
+            return;
+        }
+
+        // 2. Process messages.upsert
+        if (payload.getData().getKey() == null) {
+            log.warn("Payload de webhook inválido recebido para evento: {}", event);
+            return;
+        }
+
         log.info("Processando webhook da Evolution API: Evento={}, ID={}, Remetente={}", 
-                payload.getEvent(), 
+                event, 
                 payload.getData().getKey().getId(), 
                 payload.getData().getKey().getRemoteJid());
 
@@ -59,7 +78,6 @@ public class ChatbotService {
             return;
         }
 
-        String event = payload.getEvent();
         if (!"messages.upsert".equals(event)) {
             log.debug("Ignorando evento de webhook não suportado: {}", event);
             return;
@@ -95,32 +113,33 @@ public class ChatbotService {
         }
 
         String clientName = payload.getData().getPushName();
+        String messageId = payload.getData().getKey().getId();
 
         // 1. Verificar se o número de WhatsApp pertence a algum contato já cadastrado
         Optional<ClientContact> contactOpt = clientContactRepository.findByWhatsappNumber(senderNumber);
 
         if (contactOpt.isEmpty()) {
             // Caso não tenha vínculo cadastrado
-            handleUnknownContact(senderNumber, clientName, messageType, content);
+            handleUnknownContact(senderNumber, clientName, messageType, content, messageId);
         } else {
             // Caso já tenha vínculo cadastrado
             ClientContact contact = contactOpt.get();
-            handleKnownContact(contact, messageType, content, clientName);
+            handleKnownContact(contact, messageType, content, clientName, messageId);
         }
     }
 
-    private void handleUnknownContact(String senderNumber, String clientName, MessageType messageType, String content) {
+    private void handleUnknownContact(String senderNumber, String clientName, MessageType messageType, String content, String messageId) {
         Optional<Ticket> activeTicketOpt = ticketService.getActiveTicketByWhatsappNumber(senderNumber);
 
         if (activeTicketOpt.isEmpty()) {
             // Primeiro contato deste número: inicia identificação pedindo CNPJ
             Ticket ticket = ticketService.createIdentificationTicket(senderNumber, clientName);
-            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
             
             sendCnpjRequest(ticket);
         } else {
             Ticket ticket = activeTicketOpt.get();
-            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
 
             if (ticket.getStatus() == TicketStatus.IDENTIFICACAO_CNPJ) {
                 if (messageType == MessageType.TEXTO) {
@@ -136,18 +155,18 @@ public class ChatbotService {
         }
     }
 
-    private void handleKnownContact(ClientContact contact, MessageType messageType, String content, String clientName) {
+    private void handleKnownContact(ClientContact contact, MessageType messageType, String content, String clientName, String messageId) {
         Optional<Ticket> activeTicketOpt = ticketService.getActiveTicketByWhatsappNumber(contact.getWhatsappNumber());
 
         if (activeTicketOpt.isEmpty()) {
             // Abre novo ticket direto em TRIAGEM associado à empresa do contato
             Ticket ticket = ticketService.createTriageTicket(contact.getWhatsappNumber(), clientName, contact.getClient().getId());
-            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
 
             sendTriageMenu(ticket, contact.getClient().getCompanyName());
         } else {
             Ticket ticket = activeTicketOpt.get();
-            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content);
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
 
             if (ticket.getStatus() == TicketStatus.TRIAGEM) {
                 if (messageType == MessageType.TEXTO) {
@@ -327,27 +346,32 @@ public class ChatbotService {
                 String originalFilename = media.get("fileName") != null ? (String) media.get("fileName") : null;
                 String contentType = media.get("mimetype") != null ? (String) media.get("mimetype") : "application/octet-stream";
 
-                if (originalFilename == null) {
+                // Compactar imagem se for compatível (JPEG/PNG)
+                byte[] processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
+                String processedFilename = ImageCompressor.getNewFilename(originalFilename);
+                String processedContentType = ImageCompressor.getNewContentType(contentType);
+
+                if (processedFilename == null) {
                     String extension = "";
-                    if (contentType.contains("audio/ogg") || contentType.contains("audio/opus") || contentType.contains("ogg")) {
+                    if (processedContentType.contains("audio/ogg") || processedContentType.contains("audio/opus") || processedContentType.contains("ogg")) {
                         extension = ".ogg";
-                    } else if (contentType.contains("audio/mp4") || contentType.contains("audio/m4a") || contentType.contains("m4a")) {
+                    } else if (processedContentType.contains("audio/mp4") || processedContentType.contains("audio/m4a") || processedContentType.contains("m4a")) {
                         extension = ".m4a";
-                    } else if (contentType.contains("audio/mpeg") || contentType.contains("audio/mp3") || contentType.contains("mp3")) {
+                    } else if (processedContentType.contains("audio/mpeg") || processedContentType.contains("audio/mp3") || processedContentType.contains("mp3")) {
                         extension = ".mp3";
-                    } else if (contentType.contains("video/mp4")) {
+                    } else if (processedContentType.contains("video/mp4")) {
                         extension = ".mp4";
-                    } else if (contentType.contains("image/jpeg")) {
+                    } else if (processedContentType.contains("image/jpeg")) {
                         extension = ".jpg";
-                    } else if (contentType.contains("image/png")) {
+                    } else if (processedContentType.contains("image/png")) {
                         extension = ".png";
-                    } else if (contentType.contains("application/pdf")) {
+                    } else if (processedContentType.contains("application/pdf")) {
                         extension = ".pdf";
                     }
-                    originalFilename = "media_" + UUID.randomUUID() + extension;
+                    processedFilename = "media_" + UUID.randomUUID() + extension;
                 }
 
-                return s3Service.uploadFile(originalFilename, fileBytes, contentType);
+                return s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
             }
         } catch (Exception e) {
             log.error("Erro ao transferir mídia do gateway para o MinIO S3", e);

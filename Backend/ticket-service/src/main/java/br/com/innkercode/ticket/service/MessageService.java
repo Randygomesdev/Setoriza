@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.com.innkercode.ticket.client.EvolutionClient;
+import br.com.innkercode.ticket.util.ImageCompressor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -34,7 +35,12 @@ public class MessageService {
 
     @Transactional
     public Message saveMessage(Ticket ticket, SenderType senderType, MessageType messageType, String content) {
-        log.info("Salvando mensagem para o ticket: {}. Remetente: {}, Tipo: {}", ticket.getId(), senderType, messageType);
+        return saveMessage(ticket, senderType, messageType, content, null);
+    }
+
+    @Transactional
+    public Message saveMessage(Ticket ticket, SenderType senderType, MessageType messageType, String content, String whatsappMsgId) {
+        log.info("Salvando mensagem para o ticket: {}. Remetente: {}, Tipo: {}, ID: {}", ticket.getId(), senderType, messageType, whatsappMsgId);
         
         if (senderType == SenderType.CLIENTE || senderType == SenderType.COLABORADOR) {
             ticket.setAutoCloseWarningSent(false);
@@ -47,6 +53,8 @@ public class MessageService {
                 .senderType(senderType)
                 .messageType(messageType)
                 .content(content)
+                .whatsappMsgId(whatsappMsgId)
+                .status("SENT")
                 .sentAt(LocalDateTime.now())
                 .build();
         Message savedMessage = messageRepository.save(message);
@@ -61,7 +69,11 @@ public class MessageService {
         Message savedMessage = saveMessage(ticket, SenderType.COLABORADOR, MessageType.TEXTO, content);
         
         // 2. Dispara a mensagem para o cliente via Evolution API
-        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), content);
+        String whatsappMsgId = evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), content);
+        if (whatsappMsgId != null) {
+            savedMessage.setWhatsappMsgId(whatsappMsgId);
+            savedMessage = messageRepository.save(savedMessage);
+        }
         
         // 3. Publica evento de envio de resposta humana
         eventPublisher.publish("MESSAGE_SENT_BY_AGENT", ticket.getId().toString(), savedMessage);
@@ -73,12 +85,17 @@ public class MessageService {
     public Message sendOperatorMediaMessage(Ticket ticket, byte[] fileBytes, String originalFilename, String contentType, String caption) {
         log.info("Processando envio de resposta humana com mídia para o ticket: {} - {}", ticket.getId(), ticket.getWhatsappNumber());
         
+        // Compactar imagem se for compatível (JPEG/PNG)
+        byte[] processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
+        String processedFilename = ImageCompressor.getNewFilename(originalFilename);
+        String processedContentType = ImageCompressor.getNewContentType(contentType);
+        
         // 1. Fazer upload do arquivo para o S3
-        String s3Url = s3Service.uploadFile(originalFilename, fileBytes, contentType);
+        String s3Url = s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
         
         // 2. Determinar o tipo da mensagem
         MessageType messageType = MessageType.DOCUMENTO;
-        if (contentType != null && contentType.startsWith("image/")) {
+        if (processedContentType != null && processedContentType.startsWith("image/")) {
             messageType = MessageType.IMAGEM;
         }
         
@@ -87,30 +104,58 @@ public class MessageService {
         
         // 4. Determinar o mediatype para a Evolution API
         String mediatype = "document";
-        if (contentType != null) {
-            if (contentType.startsWith("image/")) {
+        if (processedContentType != null) {
+            if (processedContentType.startsWith("image/")) {
                 mediatype = "image";
-            } else if (contentType.startsWith("video/")) {
-                mediatype = "video";
-            } else if (contentType.startsWith("audio/")) {
+            } else if (
+                processedContentType.startsWith("audio/") || 
+                (processedFilename != null && processedFilename.toLowerCase().contains("voice_message")) ||
+                (processedFilename != null && processedFilename.toLowerCase().endsWith(".webm")) ||
+                (processedFilename != null && processedFilename.toLowerCase().endsWith(".ogg")) ||
+                (processedFilename != null && processedFilename.toLowerCase().endsWith(".opus"))
+            ) {
                 mediatype = "audio";
+            } else if (processedContentType.startsWith("video/")) {
+                mediatype = "video";
             }
         }
         
         // 5. Dispara a mensagem para o cliente via Evolution API
-        String base64Media = java.util.Base64.getEncoder().encodeToString(fileBytes);
-        evolutionClient.sendMediaMessage(
-                ticket.getWhatsappNumber(), 
-                base64Media, 
-                mediatype, 
-                contentType, 
-                originalFilename, 
-                caption
-        );
+        String whatsappMsgId;
+        if ("audio".equals(mediatype)) {
+            whatsappMsgId = evolutionClient.sendWhatsAppAudio(ticket.getWhatsappNumber(), s3Url);
+        } else {
+            whatsappMsgId = evolutionClient.sendMediaMessage(
+                    ticket.getWhatsappNumber(), 
+                    s3Url, 
+                    mediatype, 
+                    processedContentType, 
+                    processedFilename, 
+                    caption
+            );
+        }
+        if (whatsappMsgId != null) {
+            savedMessage.setWhatsappMsgId(whatsappMsgId);
+            savedMessage = messageRepository.save(savedMessage);
+        }
         
         // 6. Publica evento de envio de resposta humana
         eventPublisher.publish("MESSAGE_SENT_BY_AGENT", ticket.getId().toString(), savedMessage);
 
         return savedMessage;
+    }
+
+    @Transactional
+    public Message updateMessageStatus(String whatsappMsgId, String status) {
+        log.info("Atualizando status da mensagem: {} para {}", whatsappMsgId, status);
+        java.util.Optional<Message> messageOpt = messageRepository.findByWhatsappMsgId(whatsappMsgId);
+        if (messageOpt.isPresent()) {
+            Message message = messageOpt.get();
+            message.setStatus(status);
+            Message saved = messageRepository.save(message);
+            eventPublisher.publish("MESSAGE_STATUS_UPDATED", message.getTicket().getId().toString(), saved);
+            return saved;
+        }
+        return null;
     }
 }

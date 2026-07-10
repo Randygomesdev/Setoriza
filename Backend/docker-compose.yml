@@ -43,7 +43,9 @@ services:
     volumes:
       - minio_data:/data
     networks:
-      - setoriza_network
+      setoriza_network:
+        aliases:
+          - minio.local
 
   createbuckets:
     image: minio/mc:latest

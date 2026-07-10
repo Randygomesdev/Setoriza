@@ -32,10 +32,11 @@ public class EvolutionClient {
         return this.instanceName;
     }
 
-    public void sendTextMessage(String number, String text) {
+    @SuppressWarnings("unchecked")
+    public String sendTextMessage(String number, String text) {
         log.info("Enviando mensagem de texto para {}: {}", number, text);
         try {
-            restClient.post()
+            Map<String, Object> response = restClient.post()
                     .uri("/message/sendText/{instance}", instanceName)
                     .header("apikey", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
@@ -44,20 +45,28 @@ public class EvolutionClient {
                             "text", text
                     ))
                     .retrieve()
-                    .toBodilessEntity();
+                    .body(Map.class);
             log.info("Mensagem enviada com sucesso para {}", number);
+            if (response != null && response.containsKey("key")) {
+                Map<String, Object> key = (Map<String, Object>) response.get("key");
+                if (key != null && key.containsKey("id")) {
+                    return (String) key.get("id");
+                }
+            }
         } catch (Exception e) {
             log.error("Erro ao enviar mensagem via Evolution API para {}", number, e);
         }
+        return null;
     }
 
-    public void sendMediaMessage(String number, String mediaUrl, String mediatype, String mimetype, String filename, String caption) {
+    @SuppressWarnings("unchecked")
+    public String sendMediaMessage(String number, String mediaUrl, String mediatype, String mimetype, String filename, String caption) {
         boolean isUrl = mediaUrl != null && (mediaUrl.startsWith("http://") || mediaUrl.startsWith("https://"));
         log.info("Enviando mensagem de mídia ({}) para {}. É URL? {}", mediatype, number, isUrl);
         
         String resolvedMedia = mediaUrl;
         if (isUrl && resolvedMedia.contains("localhost:9000")) {
-            resolvedMedia = resolvedMedia.replace("localhost:9000", "minio:9000");
+            resolvedMedia = resolvedMedia.replace("localhost:9000", "minio.local:9000");
         }
         
         try {
@@ -73,17 +82,60 @@ public class EvolutionClient {
                 body.put("caption", caption);
             }
             
-            restClient.post()
+            Map<String, Object> response = restClient.post()
                     .uri("/message/sendMedia/{instance}", instanceName)
                     .header("apikey", apiKey)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .toBodilessEntity();
+                    .body(Map.class);
             log.info("Mídia enviada com sucesso para {}", number);
+            if (response != null && response.containsKey("key")) {
+                Map<String, Object> key = (Map<String, Object>) response.get("key");
+                if (key != null && key.containsKey("id")) {
+                    return (String) key.get("id");
+                }
+            }
         } catch (Exception e) {
             log.error("Erro ao enviar mídia via Evolution API para {}", number, e);
         }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    public String sendWhatsAppAudio(String number, String mediaUrl) {
+        log.info("Enviando áudio PTT via Evolution API para {}", number);
+        
+        String resolvedMedia = mediaUrl;
+        if (resolvedMedia != null && resolvedMedia.contains("localhost:9000")) {
+            resolvedMedia = resolvedMedia.replace("localhost:9000", "minio.local:9000");
+        }
+        
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("number", number);
+            body.put("audio", resolvedMedia);
+            body.put("delay", 1200);
+            body.put("encoding", true);
+            
+            Map<String, Object> response = restClient.post()
+                    .uri("/message/sendWhatsAppAudio/{instance}", instanceName)
+                    .header("apikey", apiKey)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(Map.class);
+            log.info("Áudio PTT enviado com sucesso para {}", number);
+            if (response != null && response.containsKey("key")) {
+                Map<String, Object> key = (Map<String, Object>) response.get("key");
+                if (key != null && key.containsKey("id")) {
+                    return (String) key.get("id");
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erro ao enviar áudio PTT via Evolution API para {}", number, e);
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")
