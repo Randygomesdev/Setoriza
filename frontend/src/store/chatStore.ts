@@ -35,6 +35,8 @@ export interface Message {
   messageType: 'TEXTO' | 'DOCUMENTO' | 'IMAGEM';
   content: string;
   sentAt: string;
+  whatsappMsgId?: string;
+  status?: string;
 }
 
 export interface TicketEvent {
@@ -277,17 +279,41 @@ export const useChatStore = create<ChatState>((set) => ({
           messageType: payload.messageType,
           content: payload.content,
           sentAt: payload.sentAt || new Date().toISOString(),
+          whatsappMsgId: payload.whatsappMsgId,
+          status: payload.status,
         };
         
         set((state) => {
           const ticketMessages = state.messagesByTicketId[ticketId] || [];
           if (ticketMessages.some((m) => m.id === newMessage.id)) {
-            return state;
+            // Se já existir, atualiza suas propriedades (ex: whatsappMsgId que acabou de ser gerado)
+            return {
+              messagesByTicketId: {
+                ...state.messagesByTicketId,
+                [ticketId]: ticketMessages.map((m) => m.id === newMessage.id ? { ...m, ...newMessage } : m),
+              },
+            };
           }
           return {
             messagesByTicketId: {
               ...state.messagesByTicketId,
               [ticketId]: [...ticketMessages, newMessage],
+            },
+          };
+        });
+        break;
+      }
+
+      case 'MESSAGE_STATUS_UPDATED': {
+        const updatedMessage: Message = payload;
+        set((state) => {
+          const ticketMessages = state.messagesByTicketId[ticketId] || [];
+          return {
+            messagesByTicketId: {
+              ...state.messagesByTicketId,
+              [ticketId]: ticketMessages.map((m) =>
+                m.id === updatedMessage.id ? { ...m, status: updatedMessage.status } : m
+              ),
             },
           };
         });

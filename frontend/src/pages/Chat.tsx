@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import JSZip from 'jszip';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
@@ -25,7 +26,11 @@ import {
   History,
   ChevronLeft,
   ChevronRight,
-  Clipboard
+  Clipboard,
+  Paperclip,
+  Mic,
+  Trash2,
+  Download
 } from 'lucide-react';
 
 export const Chat: React.FC = () => {
@@ -46,8 +51,18 @@ export const Chat: React.FC = () => {
     resolveTicket,
     transferTicket,
     sendOperatorMessage,
+    sendOperatorMediaMessage,
     createTicket
   } = useChatStore();
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingIntervalRef = useRef<any>(null);
+  const isRecordingCancelledRef = useRef(false);
 
   const [activeTab, setActiveTab] = useState<'aguardando' | 'meus' | 'concluidos'>('meus');
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,6 +95,10 @@ export const Chat: React.FC = () => {
   const [histFilterStartDate, setHistFilterStartDate] = useState('');
   const [histFilterEndDate, setHistFilterEndDate] = useState('');
   const [isViewingFromHistory, setIsViewingFromHistory] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [fileFilterOrigin, setFileFilterOrigin] = useState<'ALL' | 'SENT' | 'RECEIVED'>('ALL');
+  const [fileFilterTypes, setFileFilterTypes] = useState<('IMAGEM' | 'AUDIO' | 'DOCUMENTO')[]>(['IMAGEM', 'AUDIO', 'DOCUMENTO']);
+  const [zipLoading, setZipLoading] = useState(false);
 
   // Sync isDarkMode with document classList for Tailwind's darkMode: 'class' strategy
   useEffect(() => {
@@ -287,6 +306,176 @@ export const Chat: React.FC = () => {
 
       return true;
     });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !activeTicketId) return;
+    const file = files[0];
+    
+    setMediaLoading(true);
+    try {
+      await sendOperatorMediaMessage(activeTicketId, file);
+    } catch (err: any) {
+      console.error("Erro ao enviar arquivo:", err);
+      alert(`Erro ao enviar arquivo: ${err.message}`);
+    } finally {
+      setMediaLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      isRecordingCancelledRef.current = false;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/ogg;codecs=opus';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = '';
+      }
+
+      const options = mimeType ? { mimeType } : undefined;
+      const mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach((track) => track.stop());
+
+        if (isRecordingCancelledRef.current) {
+          audioChunksRef.current = [];
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
+
+        if (audioChunksRef.current.length > 0) {
+          const audioFile = new File([audioBlob], `voice_message_${Date.now()}.webm`, {
+            type: mimeType || 'audio/webm'
+          });
+          
+          if (activeTicketId) {
+            setMediaLoading(true);
+            try {
+              await sendOperatorMediaMessage(activeTicketId, audioFile);
+            } catch (err: any) {
+              console.error("Erro ao enviar áudio:", err);
+              alert(`Erro ao enviar áudio: ${err.message}`);
+            } finally {
+              setMediaLoading(false);
+            }
+          }
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+
+    } catch (err: any) {
+      console.error("Erro ao acessar microfone:", err);
+      alert("Não foi possível acessar o microfone. Verifique as permissões do seu navegador.");
+    }
+  };
+
+  const stopRecording = (shouldSend: boolean) => {
+    isRecordingCancelledRef.current = !shouldSend;
+    if (recordingIntervalRef.current) {
+      clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      if (!shouldSend) {
+        audioChunksRef.current = [];
+      }
+      mediaRecorderRef.current.stop();
+    }
+
+    setIsRecording(false);
+    setRecordingTime(0);
+  };
+
+  const formatRecordingTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleDownloadAllZip = async (filteredMessages: any[]) => {
+    if (filteredMessages.length === 0) return;
+    setZipLoading(true);
+    try {
+      const zip = new JSZip();
+      
+      const fetchPromises = filteredMessages.map(async (msg, index) => {
+        try {
+          const response = await fetch(msg.content);
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const blob = await response.blob();
+          
+          let fileName = msg.content.substring(msg.content.lastIndexOf('/') + 1);
+          if (fileName.includes('_')) {
+            fileName = fileName.substring(fileName.indexOf('_') + 1);
+          }
+          
+          const extIndex = fileName.lastIndexOf('.');
+          const ext = extIndex !== -1 ? fileName.substring(extIndex) : '';
+          const nameWithoutExt = extIndex !== -1 ? fileName.substring(0, extIndex) : fileName;
+          
+          let folderName = 'Outros';
+          if (msg.messageType === 'IMAGEM') {
+            folderName = 'Imagens';
+          } else if (
+            msg.messageType === 'AUDIO' || 
+            msg.content.toLowerCase().endsWith('.webm') || 
+            msg.content.toLowerCase().endsWith('.ogg') ||
+            msg.content.toLowerCase().endsWith('.opus')
+          ) {
+            folderName = 'Audios';
+          } else if (msg.messageType === 'DOCUMENTO') {
+            folderName = 'Documentos';
+          }
+          
+          zip.folder(folderName)?.file(`${nameWithoutExt}_${index}${ext}`, blob);
+        } catch (fileErr) {
+          console.error(`Erro ao baixar arquivo ${msg.content}:`, fileErr);
+        }
+      });
+      
+      await Promise.all(fetchPromises);
+      
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      const abbreviatedId = (activeTicketId || 'shared').substring(0, 8);
+      link.download = `${abbreviatedId}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err: any) {
+      console.error("Erro ao gerar arquivo ZIP:", err);
+      alert("Erro ao gerar o arquivo compactado: " + err.message);
+    } finally {
+      setZipLoading(false);
+    }
   };
 
   const handleSend = async (e?: React.FormEvent) => {
@@ -966,6 +1155,13 @@ export const Chat: React.FC = () => {
                   <Check size={14} />
                   Concluir Chamado
                 </button>
+              ) : activeTicket.status === 'EM_ANDAMENTO' && activeTicket.assignedAgentId !== user?.id ? (
+                <button
+                  onClick={() => handleClaim(activeTicket.id)}
+                  className="py-1.5 px-3 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded-lg shadow-md transition-all"
+                >
+                  Assumir Chamado
+                </button>
               ) : activeTicket.status === 'CONCLUIDO' ? (
                 <button
                   onClick={() => handleClaim(activeTicket.id)}
@@ -1036,14 +1232,91 @@ export const Chat: React.FC = () => {
                         : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 text-slate-800 dark:text-slate-200 rounded-tl-none'
                     }`}
                   >
-                    <p className="text-xs whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                    <span
-                      className={`text-[9px] mt-1.5 self-end font-semibold ${
-                        isMe ? 'text-blue-200' : 'text-slate-450 dark:text-slate-500'
-                      }`}
-                    >
-                      {formatTime(msg.sentAt)}
-                    </span>
+                    {msg.messageType === 'IMAGEM' ? (
+                      <div 
+                        onClick={() => setPreviewImageUrl(msg.content)} 
+                        className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 hover:opacity-90 transition-opacity cursor-zoom-in"
+                      >
+                        <img 
+                          src={msg.content} 
+                          className="max-h-60 object-cover w-full" 
+                          alt="Imagem enviada" 
+                        />
+                      </div>
+                    ) : msg.messageType === 'DOCUMENTO' && (
+                      msg.content.toLowerCase().endsWith('.webm') || 
+                      msg.content.toLowerCase().endsWith('.ogg') || 
+                      msg.content.toLowerCase().endsWith('.opus') || 
+                      msg.content.toLowerCase().endsWith('.mp3') || 
+                      msg.content.toLowerCase().endsWith('.wav') || 
+                      msg.content.toLowerCase().endsWith('.m4a')
+                    ) ? (
+                      <div className="flex flex-col gap-1 py-1">
+                        <audio 
+                          controls 
+                          src={msg.content} 
+                          className="max-w-[240px] md:max-w-[280px] h-10 accent-blue-600 outline-none" 
+                        />
+                      </div>
+                    ) : msg.messageType === 'DOCUMENTO' ? (
+                      <a 
+                        href={msg.content} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all ${
+                          isMe 
+                            ? 'bg-blue-700/40 border-blue-500/30 text-white hover:bg-blue-700/60' 
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900'
+                        }`}
+                      >
+                        <div className={`p-2 rounded-lg ${isMe ? 'bg-blue-600 text-white' : 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'}`}>
+                          <Paperclip size={14} />
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-[11px] font-bold truncate">
+                            {msg.content.includes('_') ? msg.content.substring(msg.content.indexOf('_') + 1) : 'Documento'}
+                          </span>
+                          <span className="text-[9px] opacity-70">Clique para abrir</span>
+                        </div>
+                      </a>
+                    ) : (
+                      <p className="text-xs whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    )}
+                    <div className="flex items-center gap-1 mt-1.5 self-end select-none">
+                      <span
+                        className={`text-[9px] font-semibold ${
+                          isMe ? 'text-blue-200' : 'text-slate-450 dark:text-slate-500'
+                        }`}
+                      >
+                        {formatTime(msg.sentAt)}
+                      </span>
+                      {isMe && (
+                        <span className="flex items-center">
+                          {(() => {
+                            const status = msg.status;
+                            if (status === 'READ' || status === 'PLAYED') {
+                              return (
+                                <span className="text-blue-300 flex items-center" title="Lido">
+                                  <span className="text-[10px] leading-none font-bold">✓✓</span>
+                                </span>
+                              );
+                            } else if (status === 'DELIVERED' || status === 'DELIVERY_ACK') {
+                              return (
+                                <span className="text-blue-200/80 flex items-center" title="Entregue">
+                                  <span className="text-[10px] leading-none font-bold">✓✓</span>
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="text-blue-200/60 flex items-center" title="Enviado">
+                                  <span className="text-[10px] leading-none font-bold">✓</span>
+                                </span>
+                              );
+                            }
+                          })()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -1064,23 +1337,91 @@ export const Chat: React.FC = () => {
                 Este chamado está sendo atendido por outro colaborador.
               </div>
             ) : (
-              <form onSubmit={handleSend} className="flex gap-2 items-end">
-                <textarea
-                  value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Escreva sua resposta... (Pressione Enter para enviar)"
-                  rows={1}
-                  className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none min-h-[40px] max-h-[120px]"
+              <div className="flex flex-col">
+                {mediaLoading && (
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40 rounded-xl text-[10px] font-semibold mb-2 animate-pulse w-max">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                    Enviando arquivo...
+                  </div>
+                )}
+                
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
                 />
-                <button
-                  type="submit"
-                  disabled={!messageText.trim()}
-                  className="p-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl shadow-md transition-all shrink-0"
-                >
-                  <Send size={16} />
-                </button>
-              </form>
+
+                {isRecording ? (
+                  <div className="flex items-center justify-between gap-3 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200/50 dark:border-rose-900/30 rounded-xl p-2 px-4 w-full">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-rose-600 rounded-full animate-pulse shadow-[0_0_8px_#e11d48]" />
+                      <span className="text-xs text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider animate-pulse">Gravando</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold font-mono">{formatRecordingTime(recordingTime)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(false)}
+                        className="p-2 text-rose-500 hover:text-rose-600 hover:bg-rose-100/50 dark:hover:bg-rose-900/30 rounded-lg transition-colors cursor-pointer"
+                        title="Cancelar Gravação"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => stopRecording(true)}
+                        className="p-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl shadow-md transition-all cursor-pointer flex items-center justify-center"
+                        title="Enviar Áudio"
+                      >
+                        <Send size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleSend} className="flex gap-2 items-end">
+                    <button
+                      type="button"
+                      disabled={mediaLoading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-2.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl text-slate-500 dark:text-slate-400 cursor-pointer transition-all shrink-0 flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Enviar Arquivo"
+                    >
+                      <Paperclip size={16} />
+                    </button>
+                    
+                    <textarea
+                      value={messageText}
+                      disabled={mediaLoading}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={mediaLoading ? "Aguarde o envio..." : "Escreva sua resposta... (Pressione Enter para enviar)"}
+                      rows={1}
+                      className="flex-1 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent resize-none min-h-[40px] max-h-[120px] disabled:opacity-50"
+                    />
+
+                    {messageText.trim() ? (
+                      <button
+                        type="submit"
+                        disabled={mediaLoading || !messageText.trim()}
+                        className="p-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-white rounded-xl shadow-md transition-all shrink-0 cursor-pointer flex items-center justify-center"
+                      >
+                        <Send size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={mediaLoading}
+                        onClick={startRecording}
+                        className="p-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-350 rounded-xl shadow-sm transition-all shrink-0 cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                        title="Gravar Áudio"
+                      >
+                        <Mic size={16} />
+                      </button>
+                    )}
+                  </form>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -1197,8 +1538,206 @@ export const Chat: React.FC = () => {
             </div>
           )}
 
+          {/* Shared Files & Media */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex-1 flex flex-col min-h-0 space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                <Paperclip size={12} />
+                Arquivos e Mídias
+              </h4>
+            </div>
+
+            {/* Filter Options */}
+            <div className="space-y-1.5 bg-slate-50 dark:bg-slate-900/40 p-2 rounded-xl border border-slate-105 dark:border-slate-800/60">
+              {/* Origin Filter Row */}
+              <div className="flex items-center justify-between text-[9px]">
+                <span className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wide">Origem:</span>
+                <div className="flex gap-1">
+                  {(['ALL', 'SENT', 'RECEIVED'] as const).map((origin) => (
+                    <button
+                      key={origin}
+                      type="button"
+                      onClick={() => setFileFilterOrigin(origin)}
+                      className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                        fileFilterOrigin === origin
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-250 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {origin === 'ALL' ? 'Todos' : origin === 'SENT' ? 'Enviados' : 'Recebidos'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Type Filter Row (Multi-select) */}
+              <div className="flex items-center justify-between text-[9px]">
+                <span className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wide">Tipo:</span>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (fileFilterTypes.length === 3) {
+                        setFileFilterTypes([]);
+                      } else {
+                        setFileFilterTypes(['IMAGEM', 'AUDIO', 'DOCUMENTO']);
+                      }
+                    }}
+                    className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                      fileFilterTypes.length === 3
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-250 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    Todos
+                  </button>
+
+                  {(['IMAGEM', 'AUDIO', 'DOCUMENTO'] as const).map((type) => {
+                    const isSelected = fileFilterTypes.includes(type);
+                    const label = type === 'IMAGEM' ? 'Imagens' : type === 'AUDIO' ? 'Áudios' : 'Docs';
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setFileFilterTypes((prev) =>
+                            prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+                          );
+                        }}
+                        className={`px-2 py-0.5 rounded font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600/80 text-white'
+                            : 'bg-slate-205 dark:bg-slate-800 text-slate-505 dark:text-slate-405 hover:bg-slate-300 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* List & Download Button */}
+            {(() => {
+              let filtered = activeMessages.filter((msg: any) => 
+                msg.messageType === 'IMAGEM' || 
+                msg.messageType === 'AUDIO' || 
+                msg.messageType === 'DOCUMENTO' || 
+                msg.messageType === 'VIDEO'
+              );
+
+              // Apply Origin Filter
+              if (fileFilterOrigin === 'SENT') {
+                filtered = filtered.filter((msg: any) => msg.senderType === 'COLABORADOR' || msg.senderType === 'SISTEMA');
+              } else if (fileFilterOrigin === 'RECEIVED') {
+                filtered = filtered.filter((msg: any) => msg.senderType === 'CLIENTE');
+              }
+
+              // Apply Multi-select Type Filter
+              filtered = filtered.filter((msg: any) => {
+                const isImg = msg.messageType === 'IMAGEM';
+                const isAud = msg.messageType === 'AUDIO' || 
+                              msg.content.toLowerCase().endsWith('.webm') || 
+                              msg.content.toLowerCase().endsWith('.ogg') ||
+                              msg.content.toLowerCase().endsWith('.opus');
+                const isDoc = msg.messageType === 'DOCUMENTO' && !isAud;
+
+                if (isImg && fileFilterTypes.includes('IMAGEM')) return true;
+                if (isAud && fileFilterTypes.includes('AUDIO')) return true;
+                if (isDoc && fileFilterTypes.includes('DOCUMENTO')) return true;
+
+                return false;
+              });
+
+              if (filtered.length === 0) {
+                return (
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic py-3 text-center">
+                    Nenhum arquivo encontrado para estes filtros.
+                  </p>
+                );
+              }
+
+              return (
+                <div className="flex-1 flex flex-col min-h-0 space-y-2">
+                  {/* Download ZIP Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadAllZip(filtered)}
+                    disabled={zipLoading}
+                    className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] rounded-lg transition-all flex items-center justify-center gap-1.5 shadow disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer select-none"
+                  >
+                    {zipLoading ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Download size={12} />
+                    )}
+                    {zipLoading ? 'Compactando...' : `Baixar selecionados (${filtered.length} Arq. - .zip)`}
+                  </button>
+
+                  {/* Files List Scroll Container */}
+                  <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar max-h-48">
+                    {filtered.map((msg: any) => {
+                      const fileName = msg.content.includes('_') 
+                        ? msg.content.substring(msg.content.indexOf('_') + 1) 
+                        : msg.messageType.toLowerCase();
+                      
+                      const isImg = msg.messageType === 'IMAGEM';
+
+                      if (isImg) {
+                        return (
+                          <div
+                            key={msg.id}
+                            onClick={() => setPreviewImageUrl(msg.content)}
+                            className="flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-lg text-left transition-colors cursor-zoom-in group"
+                          >
+                            <img
+                              src={msg.content}
+                              alt="Thumbnail"
+                              className="w-8 h-8 rounded object-cover border border-slate-200/50 dark:border-slate-800/50"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-blue-500 transition-colors">
+                                {fileName}
+                              </p>
+                              <p className="text-[8px] text-slate-400 dark:text-slate-500">
+                                {msg.senderType === 'CLIENTE' ? 'Recebido' : 'Enviado'} • {new Date(msg.sentAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <a
+                          key={msg.id}
+                          href={msg.content}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 p-1.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 border border-slate-100 dark:border-slate-800/50 rounded-lg text-left transition-colors cursor-pointer group"
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded text-slate-500 dark:text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <Paperclip size={12} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 truncate group-hover:text-blue-500 transition-colors">
+                              {fileName}
+                            </p>
+                            <p className="text-[8px] text-slate-400 dark:text-slate-500">
+                              {msg.senderType === 'CLIENTE' ? 'Recebido' : 'Enviado'} • {new Date(msg.sentAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Action List */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 flex-1 flex flex-col justify-end">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-3 flex flex-col justify-end">
             {activeTicket.status === 'EM_ANDAMENTO' && activeTicket.assignedAgentId === user?.id && (
               <button
                 onClick={() => handleResolve(activeTicket.id)}
@@ -1206,6 +1745,16 @@ export const Chat: React.FC = () => {
               >
                 <Check size={14} />
                 Concluir Atendimento
+              </button>
+            )}
+            
+            {activeTicket.status === 'EM_ANDAMENTO' && activeTicket.assignedAgentId !== user?.id && (
+              <button
+                onClick={() => handleClaim(activeTicket.id)}
+                className="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <User size={14} />
+                Assumir Atendimento
               </button>
             )}
             
@@ -1428,6 +1977,29 @@ export const Chat: React.FC = () => {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Image Zoom Preview Modal */}
+      {previewImageUrl && (
+        <div 
+          className="fixed inset-0 bg-slate-955/90 backdrop-blur-md z-[200] flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-zoom-out"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <button
+            onClick={() => setPreviewImageUrl(null)}
+            className="absolute top-6 right-6 text-white/80 hover:text-white bg-white/10 hover:bg-white/20 p-2 rounded-full transition-all cursor-pointer"
+            title="Fechar Visualização"
+          >
+            <X size={20} />
+          </button>
+          
+          <img 
+            src={previewImageUrl} 
+            className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-200 select-none"
+            alt="Visualização ampliada"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>
