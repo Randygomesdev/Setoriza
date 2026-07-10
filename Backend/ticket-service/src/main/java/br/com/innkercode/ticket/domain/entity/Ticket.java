@@ -52,4 +52,8 @@ public class Ticket extends BaseEntity {
 
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
+
+    @Column(name = "auto_close_warning_sent", nullable = false)
+    @Builder.Default
+    private boolean autoCloseWarningSent = false;
 }

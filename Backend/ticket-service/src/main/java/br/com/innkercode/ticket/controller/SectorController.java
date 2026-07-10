@@ -61,6 +61,16 @@ public class SectorController {
         if (sectorDetails.getSlaLimitMinutes() != null) {
             sector.setSlaLimitMinutes(sectorDetails.getSlaLimitMinutes());
         }
+        sector.setAutoCloseEnabled(sectorDetails.isAutoCloseEnabled());
+        if (sectorDetails.getAutoCloseTimeoutMinutes() != null) {
+            sector.setAutoCloseTimeoutMinutes(sectorDetails.getAutoCloseTimeoutMinutes());
+        }
+        if (sectorDetails.getAutoCloseWarningMinutes() != null) {
+            sector.setAutoCloseWarningMinutes(sectorDetails.getAutoCloseWarningMinutes());
+        }
+        if (sectorDetails.getAutoCloseWarningMessage() != null) {
+            sector.setAutoCloseWarningMessage(sectorDetails.getAutoCloseWarningMessage());
+        }
         return ResponseEntity.ok(sectorRepository.save(sector));
     }
 

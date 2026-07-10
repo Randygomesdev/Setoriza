@@ -5,6 +5,7 @@ import br.com.innkercode.ticket.domain.entity.Ticket;
 import br.com.innkercode.ticket.domain.model.MessageType;
 import br.com.innkercode.ticket.domain.model.SenderType;
 import br.com.innkercode.ticket.domain.repository.MessageRepository;
+import br.com.innkercode.ticket.domain.repository.TicketRepository;
 import br.com.innkercode.ticket.event.TicketEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class MessageService {
 
     private final MessageRepository messageRepository;
+    private final TicketRepository ticketRepository;
     private final TicketEventPublisher eventPublisher;
     private final EvolutionClient evolutionClient;
     private final S3Service s3Service;
@@ -33,6 +35,13 @@ public class MessageService {
     @Transactional
     public Message saveMessage(Ticket ticket, SenderType senderType, MessageType messageType, String content) {
         log.info("Salvando mensagem para o ticket: {}. Remetente: {}, Tipo: {}", ticket.getId(), senderType, messageType);
+        
+        if (senderType == SenderType.CLIENTE || senderType == SenderType.COLABORADOR) {
+            ticket.setAutoCloseWarningSent(false);
+            ticket.setUpdatedAt(LocalDateTime.now());
+            ticketRepository.save(ticket);
+        }
+
         Message message = Message.builder()
                 .ticket(ticket)
                 .senderType(senderType)
