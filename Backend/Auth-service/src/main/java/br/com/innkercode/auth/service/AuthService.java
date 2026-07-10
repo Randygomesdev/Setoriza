@@ -94,6 +94,40 @@ public class AuthService {
         );
     }
 
+    public UserResponse updateUser(UUID id, br.com.innkercode.auth.dto.request.UpdateUserRequest request) {
+        log.info("Atualizando dados do usuário ID: {}", id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new br.com.innkercode.auth.exception.UserNotFoundException("Usuário não encontrado"));
+
+        if (request.name() != null) {
+            user.setName(request.name());
+        }
+        if (request.email() != null && !request.email().equalsIgnoreCase(user.getEmail())) {
+            if (userRepository.findByEmail(request.email()).isPresent()) {
+                throw new AuthException("Este email já está cadastrado por outro colaborador");
+            }
+            user.setEmail(request.email());
+        }
+        if (request.role() != null) {
+            user.setRole(request.role());
+        }
+        if (request.sectors() != null) {
+            user.setSectors(request.sectors());
+        }
+
+        User updatedUser = userRepository.save(user);
+        log.info("Usuário ID: {} atualizado com sucesso", id);
+
+        return new UserResponse(
+                updatedUser.getId(),
+                updatedUser.getName(),
+                updatedUser.getEmail(),
+                updatedUser.getPictureUrl(),
+                updatedUser.getRole().name(),
+                updatedUser.getSectors()
+        );
+    }
+
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         log.info("Tentativa de login para o usuário: {}", request.email());
 
