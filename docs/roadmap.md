@@ -52,19 +52,24 @@ graph TD
   - `GET /api/v1/tickets`: Listar tickets por status (`AGUARDANDO_ATENDIMENTO`, `EM_ANDAMENTO`), setor ou atendente.
   - `POST /api/v1/tickets/{id}/claim`: Vincular o atendente (obtendo o ID do usuário dos cabeçalhos `X-User-Id` propagados pelo gateway) e alterar status para `EM_ANDAMENTO`.
   - `POST /api/v1/tickets/{id}/resolve`: Concluir o ticket, fechando a sessão de chat e permitindo novas interações do cliente.
+  - `POST /api/v1/tickets/outbound`: Rota ativa (outbound) para operador abrir chamados inserindo número de WhatsApp, nome e vinculando a setores/atendentes.
 - [x] **3.2 Endpoints de Mensagens & Resposta Humana:**
   - `GET /api/v1/tickets/{id}/messages`: Recuperar o histórico de mensagens trocadas para alimentar a tela de chat do atendente.
-  - `POST /api/v1/tickets/{id}/messages`: Receber a resposta textual do atendente no dashboard, dispará-la de volta para o cliente no WhatsApp via `EvolutionClient` e salvar o log no banco local como `SenderType.COLABORADOR`.
-- [x] **3.3 Eventos de Painel:**
+  - `POST /api/v1/tickets/{id}/messages`: Receber a resposta do atendente, disparar para Evolution API (com suporte a mídias Base64 e uploads S3) e registrar log como `SenderType.COLABORADOR`.
+- [x] **3.3 Transferência Avançada e Atribuição:**
+  - [x] Mapeamento de transferência dupla (Setor + Operador específico vinculado ao setor) e fallback para fila geral.
+- [x] **3.4 Filtro Dinâmico de Histórico (Specification):**
+  - [x] Implementação de busca paginada via `Specification` (JPA) no backend filtrando por datas, cliente, setor, atendente e status.
+- [x] **3.5 Eventos de Painel:**
   - Disparar eventos via Redis PubSub de todas as ações (`TICKET_CLAIMED`, `TICKET_RESOLVED`, `MESSAGE_SENT_BY_AGENT`) para propagação nas telas do painel.
 
 ---
 
-### 🔄 Fase 4: WebSockets & Ajustes de Gateway
+### ⏳ Fase 4: WebSockets & Ajustes de Gateway
 *Objetivo: Integrar as sessões WebSockets com segurança e possibilitar conexões diretas através do Gateway.*
 
 - [x] **4.1 Rota WebSocket no Gateway:** Configuração do roteamento do Spring Cloud Gateway para suportar conexões WebSocket persistentes (`ws://` ou `wss://`) direcionadas ao endpoint `/api/v1/ws/**` do `ticket-service`.
-- [x] **4.2 Segurança no Socket:** Validação opcional de tokens JWT na fase de handshake do WebSocket obtendo parâmetros de query ou cabeçalhos de inicialização.
+- [x] **4.2 Segurança no Socket:** Validação de tokens JWT na fase de handshake do WebSocket obtendo parâmetros de query ou cabeçalhos de inicialização.
 - [x] **4.3 Teste Unitário & Mock do Redis Broker:** Criar testes automatizados para atestar a recepção múltipla de mensagens através do broker Redis PubSub.
 
 ---
@@ -77,12 +82,27 @@ graph TD
   - [x] **Tela de Login:** Integração com o `auth-service` para captura de tokens JWT.
   - [x] **Listagem de Chamados (Sidebar):** Atualização instantânea com novos chamados entrantes (triados) utilizando conexão WebSocket no tópico `/topic/tickets`.
   - [x] **Área de Chat (Inbox):** Exibição reativa das mensagens enviadas e recebidas. Roteamento dinâmico baseado no ID do ticket selecionado e subscrição WebSocket em `/topic/tickets/{ticketId}`.
-  - [x] **Barra de Ações:** Botão para assumir chamado ("Capturar"), transferir de setor, e finalizar atendimento ("Concluir").
+  - [x] **Barra de Ações:** Botão para assumir chamado ("Capturar"), transferir de setor/operador de forma dinâmica, e finalizar atendimento ("Concluir").
+  - [x] **Abertura de Chamado Ativo:** Modal de criação de ticket com busca e autocomplete inteligente por nome ou WhatsApp de clientes cadastrados.
+  - [x] **Histórico de Tickets (Operador):** Tela inteira em formato de tabela com filtros de pesquisa e ação de visualizar conversas com botão de retorno condicional.
 - [x] **5.3 Painel Administrativo / Master (`/admin`):**
   - [x] **Dashboard de Métricas:** Estatísticas em tempo real, volumetria por setor e desempenho de SLA.
-  - [x] **Colaboradores:** Listagem e formulário de criação de novos atendentes com papéis (`USER`, `ADMIN`, `MASTER`) e setores autorizados.
-  - [x] **Clientes Corporativos:** Cadastro de empresas parceiras e vinculação de múltiplos números de WhatsApp autorizados.
+  - [x] **Colaboradores:** Listagem e formulário de criação/edição de novos atendentes com papéis (`USER`, `ADMIN`, `MASTER`) e setores autorizados.
+  - [x] **Clientes Corporativos:** Cadastro de empresas parceiras (razão social cnpj) e vinculação de múltiplos números de WhatsApp autorizados.
   - [x] **Gerenciador de Conectores (WhatsApp):** Painel interativo integrado à Evolution API, com criação automática de instância, exibição do QR Code na tela e atualização reativa do status por polling em tempo real.
+  - [x] **Painel de Histórico Completo (Admin):** Visualização geral de todos os chamados encerrados ou em andamento com filtros inteligentes.
+  - [x] **Encerramento Automático de SLA:** Opções de liga/desliga de encerramento por inatividade configurável por setor com mensagem de aviso do chatbot.
+
+---
+
+### ⏱️ Fase 5.5: SLA & Automação de Inatividade (Encerramento)
+*Objetivo: Evitar filas bloqueadas com atendimentos abandonados ou inativos.*
+
+- [x] **5.5.1 Propagação de Configurações no Banco:** Flyway V4 adicionando configurações na tabela de setores e flags de alertas nos tickets.
+- [x] **5.5.2 Motor de Encerramento (AutoCloseScheduler):** Execução a cada 1 minuto verificando inatividade por mensagens e executando ações do chatbot:
+  - Enviar aviso prévio com mensagem do chatbot configurada (remetente `SISTEMA`).
+  - Encerrar o atendimento caso o tempo limite de inatividade expire.
+- [x] **5.5.3 UI de Gerenciamento:** Inputs dinâmicos na tela de criação/edição de setores para ativar o recurso e definir tempos limites.
 
 ---
 
