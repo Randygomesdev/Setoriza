@@ -28,6 +28,7 @@ export const connectWebSocket = (token: string) => {
 
   stompClient.onConnect = (frame) => {
     console.log('Connected to STOMP Broker:', frame);
+    useChatStore.getState().setWsConnected(true);
 
     // Subscribe to the global ticket updates topic
     stompClient?.subscribe('/topic/tickets', (message) => {
@@ -44,10 +45,12 @@ export const connectWebSocket = (token: string) => {
   stompClient.onStompError = (frame) => {
     console.error('Broker reported error: ' + frame.headers['message']);
     console.error('Additional details: ' + frame.body);
+    useChatStore.getState().setWsConnected(false);
   };
 
   stompClient.onWebSocketClose = (evt) => {
     console.log('WebSocket connection closed', evt);
+    useChatStore.getState().setWsConnected(false);
   };
 
   stompClient.activate();

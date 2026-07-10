@@ -50,6 +50,8 @@ interface ChatState {
   messagesByTicketId: Record<string, Message[]>;
   loading: boolean;
   error: string | null;
+  wsConnected: boolean;
+  setWsConnected: (connected: boolean) => void;
   
   fetchTickets: () => Promise<void>;
   fetchSectors: () => Promise<void>;
@@ -70,6 +72,8 @@ export const useChatStore = create<ChatState>((set) => ({
   messagesByTicketId: {},
   loading: false,
   error: null,
+  wsConnected: false,
+  setWsConnected: (connected) => set({ wsConnected: connected }),
 
   fetchTickets: async () => {
     set({ loading: true, error: null });
