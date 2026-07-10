@@ -20,6 +20,7 @@ public class ClientContact extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Client client;
 
     @Column(name = "whatsapp_number", nullable = false, unique = true)

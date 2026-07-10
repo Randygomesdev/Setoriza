@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface ClientContactRepository extends JpaRepository<ClientContact, UUID> {
     Optional<ClientContact> findByWhatsappNumber(String whatsappNumber);
+    boolean existsByWhatsappNumber(String whatsappNumber);
 }

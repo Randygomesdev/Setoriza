@@ -4,11 +4,13 @@ import br.com.innkercode.ticket.domain.entity.Client;
 import br.com.innkercode.ticket.domain.entity.ClientContact;
 import br.com.innkercode.ticket.domain.repository.ClientContactRepository;
 import br.com.innkercode.ticket.domain.repository.ClientRepository;
+import br.com.innkercode.ticket.dto.ContactSearchResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +33,26 @@ public class ClientController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(clientRepository.findAll());
+    }
+
+    @GetMapping("/contacts")
+    public ResponseEntity<List<ContactSearchResponse>> searchContacts(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        log.info("Listando contatos de clientes para busca. Solicitante role: {}", userRole);
+        if (userRole == null || userRole.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        List<ClientContact> contacts = clientContactRepository.findAll();
+        List<ContactSearchResponse> response = contacts.stream()
+                .map(c -> new ContactSearchResponse(
+                        c.getId(),
+                        c.getContactName(),
+                        c.getWhatsappNumber(),
+                        c.getClient() != null ? c.getClient().getCompanyName() : "Avulso"
+                ))
+                .toList();
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping
@@ -84,16 +106,52 @@ public class ClientController {
             @RequestBody ClientContact contact,
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        log.info("Adicionando contato de WhatsApp {} para o cliente ID: {}. Solicitante role: {}", 
-                contact.getWhatsappNumber(), clientId, userRole);
         if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+        if (contact.getWhatsappNumber() == null || contact.getWhatsappNumber().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O número de WhatsApp é obrigatório.");
+        }
+        if (contact.getContactName() == null || contact.getContactName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O nome do contato é obrigatório.");
+        }
+
+        // Clean formatting from phone number to guarantee storage consistency
+        String cleanPhone = contact.getWhatsappNumber().replaceAll("\\D", "");
+        contact.setWhatsappNumber(cleanPhone);
+
+        log.info("Adicionando contato de WhatsApp {} para o cliente ID: {}. Solicitante role: {}", 
+                contact.getWhatsappNumber(), clientId, userRole);
+
+        // Check if phone number already exists
+        if (clientContactRepository.existsByWhatsappNumber(contact.getWhatsappNumber())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este número de WhatsApp já está cadastrado para outro cliente ou contato.");
+        }
+
         Client client = clientRepository.findById(clientId)
-                .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado"));
         
         contact.setId(null);
         contact.setClient(client);
         return ResponseEntity.ok(clientContactRepository.save(contact));
+    }
+
+    @DeleteMapping("/{clientId}/contacts/{contactId}")
+    public ResponseEntity<Void> removeContact(
+            @PathVariable UUID clientId,
+            @PathVariable UUID contactId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        log.info("Removendo contato ID {} do cliente ID: {}. Solicitante role: {}", contactId, clientId, userRole);
+        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        ClientContact contact = clientContactRepository.findById(contactId)
+                .orElseThrow(() -> new IllegalArgumentException("Contato não encontrado"));
+        if (!contact.getClient().getId().equals(clientId)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        clientContactRepository.delete(contact);
+        return ResponseEntity.ok().build();
     }
 }
