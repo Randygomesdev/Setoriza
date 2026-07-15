@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CheckCircle, AlertTriangle } from 'lucide-react';
 import { api } from '../../../services/api';
+import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 
 interface AdminIntegrationsProps {
   setError: (err: string | null) => void;
@@ -9,6 +11,8 @@ interface AdminIntegrationsProps {
 export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
   setError
 }) => {
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const [evoStatus, setEvoStatus] = useState<'OFFLINE' | 'CONNECTED' | 'DISCONNECTED' | 'LOADING'>('LOADING');
   const [qrCodeBase64, setQrCodeBase64] = useState<string | null>(null);
   const [qrLoading, setQrLoading] = useState(false);
@@ -71,15 +75,25 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
   };
 
   const handleLogoutEvoInstance = async () => {
-    if (!confirm('Deseja realmente desconectar este WhatsApp? Isso encerrará a sessão activa.')) return;
+    const confirmed = await confirm({
+      title: 'Desconectar WhatsApp',
+      message: 'Deseja realmente desconectar este WhatsApp? Isso encerrará a sessão activa.',
+      confirmText: 'Desconectar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     setError(null);
     try {
       await api.integration.logout();
       setEvoSuccessMsg('Instância desconectada com sucesso.');
       setQrCodeBase64(null);
       await checkEvoStatus();
+      addToast({ type: 'success', title: 'Instância Desconectada', message: 'WhatsApp desconectado com sucesso.' });
     } catch (err: any) {
-      setError(err.message || 'Erro ao desconectar instância');
+      const errMsg = err.message || 'Erro ao desconectar instância';
+      setError(errMsg);
+      addToast({ type: 'error', title: 'Erro ao desconectar', message: errMsg });
     }
   };
 

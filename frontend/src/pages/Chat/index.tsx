@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useToast } from '../../context/ToastContext';
 import { connectWebSocket, disconnectWebSocket } from '../../services/websocket';
 import { api } from '../../services/api';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
@@ -23,6 +24,7 @@ import {
 export const Chat: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { addToast } = useToast();
   const { user, token } = useAuthStore();
   const {
     tickets,
@@ -377,7 +379,7 @@ export const Chat: React.FC = () => {
                               <button
                                 onClick={() => {
                                   navigator.clipboard.writeText(t.id);
-                                  alert("ID completo copiado para a área de transferência!");
+                                  addToast({ type: 'success', title: 'Copiado', message: 'ID completo copiado para a área de transferência!' });
                                 }}
                                 className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
                                 title="Copiar ID Completo"

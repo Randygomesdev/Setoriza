@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
 import { formatTime, getChannelIcon } from '../utils/chatHelpers';
+import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import {
   MessageSquare,
   Search,
@@ -40,6 +42,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onSearchTermChange
 }) => {
   const { user, logout } = useAuthStore();
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const {
     tickets,
     sectors,
@@ -53,8 +57,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
 
   const [selectedSectorFilter, setSelectedSectorFilter] = useState('ALL');
 
-  const handleLogout = () => {
-    if (confirm('Deseja realmente sair do sistema?')) {
+  const handleLogout = async () => {
+    const confirmed = await confirm({
+      title: 'Sair do Sistema',
+      message: 'Deseja realmente sair do sistema?',
+      confirmText: 'Sair',
+      cancelText: 'Cancelar',
+      type: 'warning'
+    });
+    if (confirmed) {
       logout();
     }
   };
@@ -62,8 +73,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   const handleClaim = async (ticketId: string) => {
     try {
       await claimTicket(ticketId);
+      addToast({ type: 'success', title: 'Atendimento Capturado', message: 'Você assumiu o atendimento com sucesso!' });
     } catch (err: any) {
-      // already handled by store alerts
+      addToast({ type: 'error', title: 'Erro ao capturar', message: err.message || 'Não foi possível capturar o chamado.' });
     }
   };
 

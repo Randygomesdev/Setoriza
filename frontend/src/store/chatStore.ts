@@ -134,7 +134,7 @@ export const useChatStore = create<ChatState>((set) => ({
         tickets: state.tickets.map((t) => (t.id === ticketId ? updatedTicket : t)),
       }));
     } catch (err: any) {
-      alert(`Erro ao capturar chamado: ${err.message}`);
+      throw err;
     }
   },
 
@@ -145,7 +145,7 @@ export const useChatStore = create<ChatState>((set) => ({
         tickets: state.tickets.map((t) => (t.id === ticketId ? updatedTicket : t)),
       }));
     } catch (err: any) {
-      alert(`Erro ao concluir chamado: ${err.message}`);
+      throw err;
     }
   },
 
@@ -158,7 +158,6 @@ export const useChatStore = create<ChatState>((set) => ({
       }));
       return newTicket;
     } catch (err: any) {
-      alert(`Erro ao abrir chamado: ${err.message}`);
       throw err;
     }
   },
@@ -174,7 +173,7 @@ export const useChatStore = create<ChatState>((set) => ({
         // If it was transferred out of our scope, we can clear active ticket or keep it
       }));
     } catch (err: any) {
-      alert(`Erro ao transferir chamado: ${err.message}`);
+      throw err;
     }
   },
 
@@ -205,7 +204,7 @@ export const useChatStore = create<ChatState>((set) => ({
         };
       });
     } catch (err: any) {
-      alert(`Erro ao enviar mensagem: ${err.message}`);
+      throw err;
     }
   },
 
@@ -235,7 +234,7 @@ export const useChatStore = create<ChatState>((set) => ({
         };
       });
     } catch (err: any) {
-      alert(`Erro ao enviar arquivo: ${err.message}`);
+      throw err;
     }
   },
 

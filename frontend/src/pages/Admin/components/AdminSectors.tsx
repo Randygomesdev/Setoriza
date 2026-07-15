@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, X, FolderOpen, AlertTriangle } from 'lucide-react';
 import { api } from '../../../services/api';
 import { formatTechnicalName } from '../utils/adminHelpers';
+import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 
 interface AdminSectorsProps {
   sectorsList: any[];
@@ -14,6 +16,8 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
   onRefresh,
   setError
 }) => {
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const [searchSector, setSearchSector] = useState('');
   const [isSectorDrawerOpen, setIsSectorDrawerOpen] = useState(false);
   const [sectorSuccessMsg, setSectorSuccessMsg] = useState('');
@@ -96,13 +100,23 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
   };
 
   const handleDeleteSector = async (id: string) => {
-    if (!confirm('Deseja realmente desativar este setor?')) return;
+    const confirmed = await confirm({
+      title: 'Desativar Setor',
+      message: 'Deseja realmente desativar este setor?',
+      confirmText: 'Desativar',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     setError(null);
     try {
       await api.sectors.delete(id);
       await onRefresh();
+      addToast({ type: 'success', title: 'Setor Desativado', message: 'Setor desativado com sucesso!' });
     } catch (err: any) {
-      setError(err.message || 'Erro ao desativar setor');
+      const errMsg = err.message || 'Erro ao desativar setor';
+      setError(errMsg);
+      addToast({ type: 'error', title: 'Erro ao desativar', message: errMsg });
     }
   };
 
