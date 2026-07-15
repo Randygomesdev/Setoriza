@@ -118,7 +118,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         const term = searchTerm.toLowerCase();
         const clientNameMatch = ticket.clientName && ticket.clientName.toLowerCase().includes(term);
         const phoneMatch = ticket.whatsappNumber && ticket.whatsappNumber.includes(term);
-        if (!clientNameMatch && !phoneMatch) return false;
+        const companyNameMatch = ticket.client?.companyName && ticket.client.companyName.toLowerCase().includes(term);
+        if (!clientNameMatch && !phoneMatch && !companyNameMatch) return false;
       }
 
       // 3. Sector filter dropdown
@@ -311,6 +312,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     {getChannelIcon(ticket.whatsappNumber)}
                     <span className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">
                       {ticket.clientName || 'Cliente em Triagem'}
+                      {ticket.client?.companyName ? ` (${ticket.client.companyName})` : ''}
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">

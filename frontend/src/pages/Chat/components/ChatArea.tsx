@@ -294,6 +294,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
             <h2 className="font-bold text-sm text-slate-800 dark:text-slate-200">
               {activeTicket.clientName || 'Cliente em Identificação'}
+              {activeTicket.client?.companyName ? ` (${activeTicket.client.companyName})` : ''}
             </h2>
             {getChannelIcon(activeTicket.whatsappNumber)}
           </div>

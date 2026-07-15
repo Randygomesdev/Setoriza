@@ -190,6 +190,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
           <div>
             <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
               {activeTicket.clientName || 'Em Identificação'}
+              {activeTicket.client?.companyName ? ` (${activeTicket.client.companyName})` : ''}
             </h4>
             <p className="text-[10px] text-slate-500 mt-0.5">{activeTicket.whatsappNumber}</p>
           </div>
