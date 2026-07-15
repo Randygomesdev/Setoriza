@@ -1,0 +1,214 @@
+name: setoriza-prod
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PRODUÇÃO - docker-compose.prod.yml
+# Uso: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Pré-requisitos na VPS:
+#   - Arquivo .env.prod preenchido com todas as variáveis
+#   - Portas 80 e 443 abertas no firewall
+#   - Docker e Docker Compose instalados
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ─── Infraestrutura ─────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: setoriza_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - setoriza_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: setoriza_redis
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - setoriza_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: setoriza_minio
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      setoriza_network:
+        aliases:
+          - minio.local
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: setoriza_minio_init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set localminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
+      /usr/bin/mc mb localminio/setoriza-medias || true;
+      /usr/bin/mc anonymous set public localminio/setoriza-medias;
+      exit 0;
+      "
+    networks:
+      - setoriza_network
+
+  evolution_api:
+    image: evoapicloud/evolution-api:latest
+    container_name: setoriza_evolution
+    restart: always
+    environment:
+      SERVER_PORT: 8080
+      SERVER_URL: ${EVOLUTION_SERVER_URL}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/evolution_db
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://:${REDIS_PASSWORD}@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - setoriza_network
+
+  # ─── Microsserviços ─────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./Auth-service
+      dockerfile: Dockerfile
+    image: setoriza/auth-service:${APP_VERSION:-latest}
+    container_name: setoriza_auth
+    restart: always
+    environment:
+      SERVER_PORT: 8081
+      AUTH_DB_URL: jdbc:postgresql://postgres:5432/auth_db
+      AUTH_DB_USERNAME: ${POSTGRES_USER}
+      AUTH_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - setoriza_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  ticket-service:
+    build:
+      context: ./ticket-service
+      dockerfile: Dockerfile
+    image: setoriza/ticket-service:${APP_VERSION:-latest}
+    container_name: setoriza_ticket
+    restart: always
+    environment:
+      SERVER_PORT: 8082
+      TICKET_DB_URL: jdbc:postgresql://postgres:5432/ticket_db
+      TICKET_DB_USERNAME: ${POSTGRES_USER}
+      TICKET_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_NAME: setoriza-medias
+      EVOLUTION_URL: http://evolution_api:8080
+      EVOLUTION_APIKEY: ${EVOLUTION_APIKEY}
+      EVOLUTION_INSTANCE: ${EVOLUTION_INSTANCE}
+      JWT_SECRET: ${JWT_SECRET}
+      SETORIZA_BASE_URL: ${SETORIZA_BASE_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - setoriza_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  gateway-service:
+    build:
+      context: ./Gateway-service
+      dockerfile: Dockerfile
+    image: setoriza/gateway-service:${APP_VERSION:-latest}
+    container_name: setoriza_gateway
+    restart: always
+    environment:
+      SERVER_PORT: 8080
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: http://auth-service:8081
+      TICKET_SERVICE_URL: http://ticket-service:8082
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      ticket-service:
+        condition: service_healthy
+    networks:
+      - setoriza_network
+
+  # ─── Frontend ────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: setoriza/frontend:${APP_VERSION:-latest}
+    container_name: setoriza_frontend
+    restart: always
+    ports:
+      - "80:80"
+    networks:
+      - setoriza_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  setoriza_network:
+    driver: bridge

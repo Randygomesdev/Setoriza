@@ -4,16 +4,12 @@
 *.iml
 *.ipr
 *.iws
-*.af
-*~lock~
 
 # Build tool folders
 **/target/
 **/bin/
 **/build/
 !.mvn/wrapper/maven-wrapper.jar
-node_modules/
-dist/
 
 # Dependency folders
 .gradle/
@@ -22,11 +18,16 @@ dist/
 # Log files
 *.log
 
-# Env files and secrets
+# Env files and secrets (nunca commitar arquivos .env reais!)
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Roadmap
+roadmap.md
+../roadmap.md

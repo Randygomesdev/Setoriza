@@ -1,0 +1,93 @@
+name: Setoriza-infra
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./infra/postgres-init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - setoriza_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks:
+      - setoriza_network
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio_storage
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      setoriza_network:
+        aliases:
+          - minio.local
+
+  createbuckets:
+    image: minio/mc:latest
+    container_name: minio_bucket_creator
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set localminio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb localminio/setoriza-medias || true;
+      /usr/bin/mc anonymous set public localminio/setoriza-medias;
+      exit 0;
+      "
+    networks:
+      - setoriza_network
+
+  evolution_api:
+    image: evoapicloud/evolution-api:latest
+    container_name: evolution_api
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      - SERVER_PORT=8080
+      - SERVER_URL=http://localhost:8085
+      - AUTHENTICATION_API_KEY=setoriza_api_key_12345
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@postgres:5432/evolution_db
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - setoriza_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  setoriza_network:
+    driver: bridge
