@@ -57,7 +57,7 @@ interface ChatState {
   
   fetchTickets: () => Promise<void>;
   fetchSectors: () => Promise<void>;
-  selectTicket: (ticketId: string) => Promise<void>;
+  selectTicket: (ticketId: string | null) => Promise<void>;
   claimTicket: (ticketId: string) => Promise<void>;
   resolveTicket: (ticketId: string) => Promise<void>;
   transferTicket: (ticketId: string, targetSectorId?: string, targetAgentId?: string) => Promise<void>;
@@ -99,8 +99,9 @@ export const useChatStore = create<ChatState>((set) => ({
     }
   },
 
-  selectTicket: async (ticketId: string) => {
+  selectTicket: async (ticketId: string | null) => {
     set({ activeTicketId: ticketId });
+    if (!ticketId) return;
     
     // Fetch messages for the ticket if not already loaded, or to refresh
     try {
