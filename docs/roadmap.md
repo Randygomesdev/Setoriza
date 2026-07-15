@@ -13,8 +13,8 @@ graph TD
     Phase3 -->|Concluído| Phase4[Fase 4: Configuração WebSockets]
     Phase5[Fase 5: Dashboard Frontend] -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
     Phase6 -->|Concluído| Phase9[Fase 9: Refatoração & Mobile]
-    Phase9 -->|A seguir| Phase10[Fase 10: Toasts & Alertas Custom]
-    Phase10 -->|Planejado| Phase7[Fase 7: Produção & DevOps]
+    Phase9 -->|Concluído| Phase10[Fase 10: Toasts & Alertas Custom]
+    Phase10 -->|A seguir| Phase7[Fase 7: Produção & DevOps]
 ```
 
 ---
@@ -151,9 +151,9 @@ graph TD
 
 ---
 
-### 🔔 Fase 10: Camada de Notificações Internas (Toasts & Alertas Customizados) (A seguir)
+### 🔔 Fase 10: Camada de Notificações Internas (Toasts & Alertas Customizados) (Concluído)
 *Objetivo: Substituir os popups nativos do navegador (`alert`, `confirm`) por componentes modais e toasts animados integrados ao visual da plataforma.*
 
-- [ ] **10.1 Criação do Contexto de Toast (Notificações):** Estruturar o `ToastProvider` e hook `useToast` para gerenciamento em lote de mensagens temporárias de sucesso, erro e alertas flutuantes no canto da tela.
-- [ ] **10.2 Modais de Confirmação Personalizados (Confirmations):** Substituir a função nativa `window.confirm` (usada em deleções de clientes, conexões ou exclusões de contatos) por um modal de confirmação premium estilizado com nosso design dark/light.
-- [ ] **10.3 Integração em Lote no Frontend:** Substituir as chamadas de alertas, modais e mensagens de erro do sistema de API pelas novas instâncias de Toasts/Modais customizados nos módulos Chat e Admin.
+- [x] **10.1 Criação do Contexto de Toast (Notificações):** Estruturar o `ToastProvider` e hook `useToast` para gerenciamento em lote de mensagens temporárias de sucesso, erro e alertas flutuantes no canto da tela.
+- [x] **10.2 Modais de Confirmação Personalizados (Confirmations):** Substituir a função nativa `window.confirm` (usada em deleções de clientes, conexões ou exclusões de contatos) por um modal de confirmação premium estilizado com nosso design dark/light.
+- [x] **10.3 Integração em Lote no Frontend:** Substituir as chamadas de alertas, modais e mensagens de erro do sistema de API pelas novas instâncias de Toasts/Modais customizados nos módulos Chat e Admin.
