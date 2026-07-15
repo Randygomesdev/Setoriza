@@ -11,9 +11,10 @@ graph TD
     Phase1[Fase 1: Infraestrutura & DB Base] -->|Concluído| Phase2[Fase 2: Triagem & Chatbot Core]
     Phase2 -->|Concluído| Phase3[Fase 3: APIs do Operador]
     Phase3 -->|Concluído| Phase4[Fase 4: Configuração WebSockets]
-    Phase4 -->|Concluído| Phase5[Fase 5: Dashboard Frontend]
-    Phase5 -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
-    Phase6 -->|A seguir| Phase7[Fase 7: Produção & DevOps]
+    Phase5[Fase 5: Dashboard Frontend] -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
+    Phase6 -->|Concluído| Phase9[Fase 9: Refatoração & Mobile]
+    Phase9 -->|A seguir| Phase10[Fase 10: Toasts & Alertas Custom]
+    Phase10 -->|Planejado| Phase7[Fase 7: Produção & DevOps]
 ```
 
 ---
@@ -140,13 +141,19 @@ graph TD
 
 ---
 
-### 🎨 Fase 9: Refatoração & Componentização do Frontend (A seguir)
-*Objetivo: Desacoplar a tela única centralizada do atendente em subcomponentes isolados, melhorando a manutenibilidade, legibilidade e performance do painel.*
+### 🎨 Fase 9: Refatoração, Modularização & Suporte Mobile
+*Objetivo: Desacoplar a visualização monolítica em componentes reutilizáveis e otimizar a experiência em dispositivos móveis.*
 
-- [ ] **9.1 Decomposição do Chat.tsx:** Segmentar a visualização monolítica em subcomponentes reutilizáveis:
-  - `ChatSidebar` (Lista de tickets e buscas).
-  - `ChatArea` (Bolhas de mensagens, inputs e gravador de áudio).
-  - `ChatDetailsSidebar` (Vínculo de clientes, histórico do ticket, listagem e download de mídias/ZIP).
-  - `ChatModals` (Modal de abertura de ticket ativo e modais adicionais).
-- [ ] **9.2 Otimização de Performance:** Refinar os seletores do Zustand no store de chat para evitar renderizações globais desnecessárias.
-- [ ] **9.3 Roteamento Avançado:** Introduzir roteamento limpo para as sub-áreas do painel.
+- [x] **9.1 Decomposição do Chat.tsx:** Segmentar a visualização monolítica em subcomponentes reutilizáveis (`ChatSidebar`, `ChatArea`, `ChatDetails`).
+- [x] **9.2 Decomposição do Admin.tsx:** Segmentar a visualização monolítica em subcomponentes reutilizáveis (`AdminDashboard`, `AdminUsers`, `AdminClients`, `AdminIntegrations`, `AdminSectors`, `AdminHistory`).
+- [x] **9.3 Responsividade Mobile Completa:** Implementar sidebar colapsável com controle hambúrguer, overlay e grids flexíveis de cards com paginação isolada no mobile.
+- [x] **9.4 Otimização de Performance:** Refinar seletores e imports para evitar re-renderizações indesejadas e garantir compilação stricta sem warnings.
+
+---
+
+### 🔔 Fase 10: Camada de Notificações Internas (Toasts & Alertas Customizados) (A seguir)
+*Objetivo: Substituir os popups nativos do navegador (`alert`, `confirm`) por componentes modais e toasts animados integrados ao visual da plataforma.*
+
+- [ ] **10.1 Criação do Contexto de Toast (Notificações):** Estruturar o `ToastProvider` e hook `useToast` para gerenciamento em lote de mensagens temporárias de sucesso, erro e alertas flutuantes no canto da tela.
+- [ ] **10.2 Modais de Confirmação Personalizados (Confirmations):** Substituir a função nativa `window.confirm` (usada em deleções de clientes, conexões ou exclusões de contatos) por um modal de confirmação premium estilizado com nosso design dark/light.
+- [ ] **10.3 Integração em Lote no Frontend:** Substituir as chamadas de alertas, modais e mensagens de erro do sistema de API pelas novas instâncias de Toasts/Modais customizados nos módulos Chat e Admin.
