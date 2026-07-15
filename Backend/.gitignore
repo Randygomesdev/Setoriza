@@ -18,10 +18,11 @@
 # Log files
 *.log
 
-# Env files and secrets
+# Env files and secrets (nunca commitar arquivos .env reais!)
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # OS files
 .DS_Store
