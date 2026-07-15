@@ -4,30 +4,82 @@
 
 @layer base {
   :root {
-    --background: #F8FAFC;
-    --surface: #FFFFFF;
-    --primary: #001638;
-    --success: #25D366;
-    --info: #24A1DE;
-    --text-main: #0F172A;
-    --text-muted: #64748B;
-    --border: #E2E8F0;
+    /* ── Shadcn/ui required variables ────────────────────────────── */
+    --background: 248 250 252;         /* #F8FAFC */
+    --foreground: 15 23 42;            /* #0F172A */
+
+    --card: 255 255 255;               /* #FFFFFF */
+    --card-foreground: 15 23 42;       /* #0F172A */
+
+    --popover: 255 255 255;
+    --popover-foreground: 15 23 42;
+
+    --primary: 0 22 56;                /* #001638 – navy da marca */
+    --primary-foreground: 255 255 255; /* #FFFFFF – texto branco sobre navy */
+
+    --secondary: 241 245 249;          /* slate-100 */
+    --secondary-foreground: 15 23 42;
+
+    --muted: 241 245 249;              /* slate-100 */
+    --muted-foreground: 100 116 139;   /* slate-500 */
+
+    --accent: 241 245 249;
+    --accent-foreground: 15 23 42;
+
+    --destructive: 239 68 68;          /* red-500 */
+    --destructive-foreground: 255 255 255;
+
+    --border: 226 232 240;             /* slate-200 */
+    --input: 226 232 240;
+    --ring: 0 22 56;                   /* navy */
+
+    --radius: 0.5rem;
+
+    /* ── Tokens do projeto ────────────────────────────────────────── */
+    --brand-navy:   #001638;
+    --brand-green:  #25D366;
+    --brand-sky:    #24A1DE;
   }
 
   .dark {
-    --background: #020617;
-    --surface: #0F172A;
-    --primary: #3B82F6;
-    --success: #10B981;
-    --info: #38BDF8;
-    --text-main: #F8FAFC;
-    --text-muted: #94A3B8;
-    --border: #334155;
+    /* ── Shadcn/ui dark variables ─────────────────────────────────── */
+    --background: 2 6 23;              /* #020617 */
+    --foreground: 248 250 252;         /* #F8FAFC */
+
+    --card: 15 23 42;                  /* #0F172A */
+    --card-foreground: 248 250 252;
+
+    --popover: 15 23 42;
+    --popover-foreground: 248 250 252;
+
+    --primary: 59 130 246;             /* blue-500 */
+    --primary-foreground: 255 255 255;
+
+    --secondary: 30 41 59;             /* slate-800 */
+    --secondary-foreground: 248 250 252;
+
+    --muted: 30 41 59;
+    --muted-foreground: 148 163 184;   /* slate-400 */
+
+    --accent: 30 41 59;
+    --accent-foreground: 248 250 252;
+
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+
+    --border: 51 65 85;                /* slate-700 */
+    --input: 51 65 85;
+    --ring: 59 130 246;
+
+    /* ── Tokens do projeto (dark) ─────────────────────────────────── */
+    --brand-navy:   #3B82F6;
+    --brand-green:  #10B981;
+    --brand-sky:    #38BDF8;
   }
 
   body {
-    background-color: var(--background);
-    color: var(--text-main);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-family: 'Inter', sans-serif;
   }
 }
