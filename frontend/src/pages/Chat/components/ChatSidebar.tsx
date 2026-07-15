@@ -138,7 +138,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     <div className={`${activeTicketId ? 'hidden' : 'flex'} md:flex w-full md:w-96 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 backdrop-blur-md h-full`}>
       
       {/* User Profile Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-blue-600 to-emerald-500 flex items-center justify-center font-bold text-white shadow-md">
             {user?.name ? user.name.slice(0, 2).toUpperCase() : 'OP'}
