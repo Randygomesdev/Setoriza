@@ -14,7 +14,10 @@ graph TD
     Phase5[Fase 5: Dashboard Frontend] -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
     Phase6 -->|Concluído| Phase9[Fase 9: Refatoração & Mobile]
     Phase9 -->|Concluído| Phase10[Fase 10: Toasts & Alertas Custom]
-    Phase10 -->|A seguir| Phase7[Fase 7: Produção & DevOps]
+    Phase10 -->|Concluído| Phase7[Fase 7: Produção & DevOps]
+    Phase7 -->|A seguir| Phase11[Fase 11: API Híbrida Meta]
+    Phase11 -->|Planejado| Phase12[Fase 12: Suporte a Grupos]
+    Phase12 -->|Planejado| Phase13[Fase 13: Chatbot Inteligente IA]
 ```
 
 ---
@@ -120,14 +123,14 @@ graph TD
 
 ---
 
-### 🌐 Fase 7: Produção & DevOps (Cloud Deploy)
+### 🌐 Fase 7: Produção & DevOps (Cloud Deploy) (Concluído Parcial - Pronto para VPS)
 *Objetivo: Preparar e implantar a aplicação na nuvem com segurança SSL e alta disponibilidade.*
 
-- [ ] **7.1 Otimização de Imagens Docker:** Criação de arquivos `Dockerfile` multi-stage para compilar e empacotar a aplicação de forma otimizada para produção.
-- [ ] **7.2 Orquestração:**
+- [x] **7.1 Otimização de Imagens Docker:** Criação de arquivos `Dockerfile` multi-stage para compilar e empacotar a aplicação de forma otimizada para produção.
+- [x] **7.2 Orquestração:**
   - Ajustar o compose para modo de produção ou mapeamento Kubernetes/Docker Swarm.
   - Substituir senhas padrão e credenciais locais por injeção segura de Secrets.
-- [ ] **7.3 Servidor de Ingress & SSL:** Setup do Nginx ou Traefik como Proxy Reverso, gerenciando a renovação automática de certificados SSL gratuitos via Let's Encrypt.
+- [x] **7.3 Servidor de Ingress & SSL:** Setup do Nginx ou Traefik como Proxy Reverso, gerenciando a renovação automática de certificados SSL gratuitos via Let's Encrypt (Configuração base do Nginx e CI/CD prontas).
 - [ ] **7.4 Estratégia de Backup:** Configurar rotinas de backup automatizadas diárias do banco PostgreSQL na nuvem.
 
 ---
@@ -157,3 +160,31 @@ graph TD
 - [x] **10.1 Criação do Contexto de Toast (Notificações):** Estruturar o `ToastProvider` e hook `useToast` para gerenciamento em lote de mensagens temporárias de sucesso, erro e alertas flutuantes no canto da tela.
 - [x] **10.2 Modais de Confirmação Personalizados (Confirmations):** Substituir a função nativa `window.confirm` (usada em deleções de clientes, conexões ou exclusões de contatos) por um modal de confirmação premium estilizado com nosso design dark/light.
 - [x] **10.3 Integração em Lote no Frontend:** Substituir as chamadas de alertas, modais e mensagens de erro do sistema de API pelas novas instâncias de Toasts/Modais customizados nos módulos Chat e Admin.
+
+---
+
+### 📲 Fase 11: Integração Híbrida com API Oficial da Meta (A Seguir)
+*Objetivo: Permitir o uso integrado e alternável da API oficial do WhatsApp (Cloud API da Meta) e a Evolution API.*
+
+- [ ] **11.1 Abstração do Canal de Envio (Interface):** Definir uma interface de serviço unificada no `ticket-service` (ex: `WhatsAppGatewayService`) para encapsular o disparo de mensagens, mídias e templates independentemente da API selecionada.
+- [ ] **11.2 Cliente API Oficial da Meta:** Desenvolver o cliente HTTP no Spring Boot integrado com a API Cloud do Graph da Meta (envio de texto, templates pré-aprovados e mídias).
+- [ ] **11.3 Webhook Receptor da Meta:** Implementar o endpoint de webhook específico para receber e descriptografar os payloads enviados pelos servidores da Meta.
+- [ ] **11.4 Escolha Híbrida do Cliente:** Criar campo de configuração no cadastro do cliente corporativo (Admin) para selecionar se ele utiliza a Evolution API ou a API oficial da Meta, alternando o roteamento da mensagem dinamicamente no backend.
+
+---
+
+### 👥 Fase 12: Suporte a Grupos & Intercepção por Hashtags (Planejado)
+*Objetivo: Possibilitar a abertura de chamados no painel a partir de mensagens enviadas em grupos de WhatsApp.*
+
+- [ ] **12.1 Roteamento por remoteJid:** Adaptar o `TicketService` e a persistência do banco de dados para diferenciar conversas privadas (`@s.whatsapp.net`) de mensagens em grupos (`@g.us`).
+- [ ] **12.2 Intercepção por Hashtags:** Desenvolver filtro no backend para escutar grupos de WhatsApp autorizados e, caso um participante envie uma tag chave (ex: `#fiscal`, `#dp`), criar um chamado na fila do setor correspondente.
+- [ ] **12.3 Mensagens de Fora de Horário & Respostas em Grupo:** Configurar mensagens de ausência e disparos automáticos para grupos quando o atendimento for iniciado ou fora do horário comercial.
+
+---
+
+### 🧠 Fase 13: Chatbot Inteligente com IA (Planejado)
+*Objetivo: Integrar grandes modelos de linguagem (LLMs) para responder dúvidas frequentes e refinar a triagem automática.*
+
+- [ ] **13.1 Cliente de Integração com LLM:** Desenvolver integração com a API da OpenAI (GPT), Anthropic (Claude) ou Google (Gemini) no `ticket-service`.
+- [ ] **13.2 Base de Conhecimento e Prompting:** Estruturar sistema de contexto/RAG para o robô responder com precisão baseando-se em documentos da empresa.
+- [ ] **13.3 Classificação Inteligente de Setor:** Utilizar IA para interpretar a solicitação inicial em linguagem natural do cliente e direcioná-lo automaticamente ao setor correto.
