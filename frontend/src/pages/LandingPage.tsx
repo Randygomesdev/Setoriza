@@ -19,7 +19,6 @@ import {
 
   Menu,
   X,
-  GitBranch,
   MessageCircle,
   Send,
   Camera,
