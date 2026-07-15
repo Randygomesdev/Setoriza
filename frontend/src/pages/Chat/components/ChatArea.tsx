@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
 import { formatTime, getChannelIcon } from '../utils/chatHelpers';
+import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import {
   ChevronLeft,
   History,
@@ -31,6 +33,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onViewModeChange
 }) => {
   const { user } = useAuthStore();
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const {
     activeTicketId,
     messagesByTicketId,
@@ -92,18 +96,27 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const handleClaim = async (ticketId: string) => {
     try {
       await claimTicket(ticketId);
-    } catch (err) {
-      // already handled
+      addToast({ type: 'success', title: 'Atendimento Capturado', message: 'Você assumiu o atendimento com sucesso!' });
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Erro ao capturar', message: err.message || 'Não foi possível capturar o atendimento.' });
     }
   };
 
   const handleResolve = async (ticketId: string) => {
-    if (confirm('Deseja realmente encerrar este atendimento?')) {
+    const confirmed = await confirm({
+      title: 'Encerrar Atendimento',
+      message: 'Deseja realmente encerrar este atendimento?',
+      confirmText: 'Encerrar',
+      cancelText: 'Cancelar',
+      type: 'primary'
+    });
+    if (confirmed) {
       try {
         await resolveTicket(ticketId);
         selectTicket(null); // Clear selected chat after resolve
-      } catch (err) {
-        // already handled
+        addToast({ type: 'success', title: 'Atendimento Concluído', message: 'Atendimento encerrado com sucesso!' });
+      } catch (err: any) {
+        addToast({ type: 'error', title: 'Erro ao concluir', message: err.message || 'Não foi possível concluir o atendimento.' });
       }
     }
   };
@@ -118,15 +131,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       ? `Deseja transferir o chamado para o atendente ${agentName} no setor ${sectorName}?`
       : `Deseja colocar o chamado na fila do setor ${sectorName}?`;
 
-    if (confirm(confirmMessage)) {
+    const confirmed = await confirm({
+      title: 'Transferir Chamado',
+      message: confirmMessage,
+      confirmText: 'Transferir',
+      cancelText: 'Cancelar',
+      type: 'primary'
+    });
+
+    if (confirmed) {
       try {
         await transferTicket(activeTicketId, transferSectorId, transferAgentId || undefined);
         setShowTransferPopover(false);
         setTransferSectorId('');
         setTransferAgentId('');
         selectTicket(null); // Clear selected ticket since it is transferred
-      } catch (err) {
-        // already handled
+        addToast({ type: 'success', title: 'Chamado Transferido', message: 'Chamado transferido com sucesso!' });
+      } catch (err: any) {
+        addToast({ type: 'error', title: 'Erro ao transferir', message: err.message || 'Não foi possível transferir o chamado.' });
       }
     }
   };
@@ -141,7 +163,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     try {
       await sendOperatorMessage(activeTicketId, textToSend);
     } catch (err: any) {
-      alert(`Erro ao enviar mensagem: ${err.message}`);
+      addToast({ type: 'error', title: 'Erro ao enviar', message: err.message || 'Não foi possível enviar a mensagem.' });
     }
   };
 
@@ -153,8 +175,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     setMediaLoading(true);
     try {
       await sendOperatorMediaMessage(activeTicketId, file);
+      addToast({ type: 'success', title: 'Mídia enviada', message: 'Mídia enviada com sucesso!' });
     } catch (err: any) {
-      alert(`Erro ao enviar mídia: ${err.message}`);
+      addToast({ type: 'error', title: 'Erro ao enviar mídia', message: err.message || 'Não foi possível enviar o arquivo.' });
     } finally {
       setMediaLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -205,9 +228,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             setMediaLoading(true);
             try {
               await sendOperatorMediaMessage(activeTicketId, audioFile);
+              addToast({ type: 'success', title: 'Áudio enviado', message: 'Áudio enviado com sucesso!' });
             } catch (err: any) {
               console.error("Erro ao enviar áudio:", err);
-              alert(`Erro ao enviar áudio: ${err.message}`);
+              addToast({ type: 'error', title: 'Erro ao enviar áudio', message: err.message || 'Não foi possível enviar o áudio.' });
             } finally {
               setMediaLoading(false);
             }
@@ -219,7 +243,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
       setIsRecording(true);
     } catch (err) {
       console.error("Erro ao acessar microfone:", err);
-      alert("Não foi possível acessar seu microfone. Verifique as permissões do navegador.");
+      addToast({ type: 'error', title: 'Permissão negada', message: 'Não foi possível acessar seu microfone. Verifique as permissões do navegador.' });
     }
   };
 

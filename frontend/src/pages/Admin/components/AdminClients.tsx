@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, X, Briefcase, Phone, Trash2 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { formatCNPJ, formatPhone, formatPhoneOnly, formatPhoneNumber } from '../utils/adminHelpers';
+import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 
 interface AdminClientsProps {
   clientsList: any[];
@@ -14,6 +16,8 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
   onRefresh,
   setError
 }) => {
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const [searchClient, setSearchClient] = useState('');
   const [isClientDrawerOpen, setIsClientDrawerOpen] = useState(false);
   const [clientSuccessMsg, setClientSuccessMsg] = useState('');
@@ -93,13 +97,23 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
   };
 
   const handleDeleteClient = async (id: string) => {
-    if (!confirm('Deseja realmente remover este cliente? Todos os contatos vinculados serão impactados.')) return;
+    const confirmed = await confirm({
+      title: 'Remover Cliente',
+      message: 'Deseja realmente remover este cliente? Todos os contatos vinculados serão impactados.',
+      confirmText: 'Remover',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     setError(null);
     try {
       await api.clients.delete(id);
       await onRefresh();
+      addToast({ type: 'success', title: 'Cliente Removido', message: 'Cliente corporativo removido com sucesso!' });
     } catch (err: any) {
-      setError(err.message || 'Erro ao deletar cliente');
+      const errMsg = err.message || 'Erro ao deletar cliente';
+      setError(errMsg);
+      addToast({ type: 'error', title: 'Erro ao remover', message: errMsg });
     }
   };
 
@@ -141,7 +155,14 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
 
   const handleRemoveContactFromExisting = async (contactId: string) => {
     if (!editingClient) return;
-    if (!confirm('Deseja realmente remover este número de contato do cliente?')) return;
+    const confirmed = await confirm({
+      title: 'Remover Contato',
+      message: 'Deseja realmente remover este número de contato do cliente?',
+      confirmText: 'Remover',
+      cancelText: 'Cancelar',
+      type: 'danger'
+    });
+    if (!confirmed) return;
     setError(null);
     try {
       await api.clients.deleteContact(editingClient.id, contactId);
@@ -149,8 +170,11 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
       const updated = res.find((x: any) => x.id === editingClient.id);
       if (updated) setEditingClient(updated);
       await onRefresh();
+      addToast({ type: 'success', title: 'Contato Removido', message: 'Contato removido com sucesso!' });
     } catch (err: any) {
-      setError(err.message || 'Erro ao remover contato');
+      const errMsg = err.message || 'Erro ao remover contato';
+      setError(errMsg);
+      addToast({ type: 'error', title: 'Erro ao remover', message: errMsg });
     }
   };
 

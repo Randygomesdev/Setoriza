@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import JSZip from 'jszip';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
+import { useToast } from '../../../context/ToastContext';
+import { useConfirm } from '../../../context/ConfirmContext';
 import {
   X,
   User,
@@ -26,6 +28,8 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
   onImageClick
 }) => {
   const { user } = useAuthStore();
+  const { addToast } = useToast();
+  const { confirm } = useConfirm();
   const {
     activeTicketId,
     tickets,
@@ -52,18 +56,27 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
   const handleClaim = async (ticketId: string) => {
     try {
       await claimTicket(ticketId);
-    } catch (err) {
-      // already handled
+      addToast({ type: 'success', title: 'Atendimento Capturado', message: 'Você assumiu o atendimento com sucesso!' });
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Erro ao capturar', message: err.message || 'Não foi possível capturar o atendimento.' });
     }
   };
 
   const handleResolve = async (ticketId: string) => {
-    if (confirm('Deseja realmente encerrar este atendimento?')) {
+    const confirmed = await confirm({
+      title: 'Encerrar Atendimento',
+      message: 'Deseja realmente encerrar este atendimento?',
+      confirmText: 'Encerrar',
+      cancelText: 'Cancelar',
+      type: 'primary'
+    });
+    if (confirmed) {
       try {
         await resolveTicket(ticketId);
         selectTicket(null);
-      } catch (err) {
-        // already handled
+        addToast({ type: 'success', title: 'Atendimento Concluído', message: 'Atendimento encerrado com sucesso!' });
+      } catch (err: any) {
+        addToast({ type: 'error', title: 'Erro ao concluir', message: err.message || 'Não foi possível concluir o atendimento.' });
       }
     }
   };
@@ -78,14 +91,23 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
       ? `Deseja transferir o chamado para o atendente ${agentName} no setor ${sectorName}?`
       : `Deseja colocar o chamado na fila do setor ${sectorName}?`;
 
-    if (confirm(confirmMessage)) {
+    const confirmed = await confirm({
+      title: 'Transferir Chamado',
+      message: confirmMessage,
+      confirmText: 'Transferir',
+      cancelText: 'Cancelar',
+      type: 'primary'
+    });
+
+    if (confirmed) {
       try {
         await transferTicket(activeTicketId, transferSectorId, transferAgentId || undefined);
         setTransferSectorId('');
         setTransferAgentId('');
         selectTicket(null);
-      } catch (err) {
-        // already handled
+        addToast({ type: 'success', title: 'Chamado Transferido', message: 'Chamado transferido com sucesso!' });
+      } catch (err: any) {
+        addToast({ type: 'error', title: 'Erro ao transferir', message: err.message || 'Não foi possível transferir o chamado.' });
       }
     }
   };
@@ -150,8 +172,9 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
       link.download = zipFilename;
       link.click();
       URL.revokeObjectURL(link.href);
+      addToast({ type: 'success', title: 'Arquivo ZIP Gerado', message: 'Mídias empacotadas e baixadas com sucesso!' });
     } catch (err: any) {
-      alert(`Erro ao gerar o arquivo ZIP: ${err.message}`);
+      addToast({ type: 'error', title: 'Erro no ZIP', message: `Erro ao gerar o arquivo ZIP: ${err.message}` });
     } finally {
       setZipLoading(false);
     }
