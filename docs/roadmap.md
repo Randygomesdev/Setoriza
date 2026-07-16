@@ -154,6 +154,9 @@ graph TD
 - [x] **9.5 Histórico de Transferências (Linha do Tempo):** Implementação de gavetas (accordions) colapsáveis na barra lateral e renderização dinâmica da linha do tempo das transferências do ticket.
 - [x] **9.6 Validação de Reabertura Limitada (Janela de 24h):** Restringir a reabertura manual de chamados concluídos a uma janela máxima de 24 horas, bloqueando a ação no backend e desabilitando o botão correspondente no frontend.
 - [x] **9.7 Logs de Sistema na Transferência:** Disparar e registrar mensagens automáticas internas de sistema (`SISTEMA`) no chat detalhando transferências de setores e atendentes para contexto dos operadores.
+- [x] **9.8 Unificação Visual do Painel Admin:** Aplicar o sistema de design glassmorphic e translúcido com as cores operacionais em todas as sub-telas do menu de administração.
+- [x] **9.9 Navegação "Ver Conversa" no Histórico Admin:** Inserir ação de visualização de conversa na tabela desktop e cards mobile que redireciona o administrador diretamente ao chat com o ticket carregado.
+- [x] **9.10 Histórico de Chamados Responsivo (Cards Mobile):** Implementar visualização em cards responsivos para o histórico operacional no painel do atendente (/chat).
 
 ---
 
