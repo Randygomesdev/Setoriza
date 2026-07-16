@@ -2,6 +2,7 @@ package br.com.innkercode.ticket.controller;
 
 import br.com.innkercode.ticket.domain.entity.Message;
 import br.com.innkercode.ticket.domain.entity.Ticket;
+import br.com.innkercode.ticket.domain.entity.TicketSectorHistory;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.dto.DashboardSlaMetricsResponse;
 import br.com.innkercode.ticket.dto.MessageResponse;
@@ -122,7 +123,7 @@ public class TicketController {
             @RequestBody TransferTicketRequest request
     ) {
         log.info("Recebida requisição para transferir ticket {}", id);
-        Ticket ticket = ticketService.transferTicket(id, request.targetSectorId(), request.targetAgentId());
+        Ticket ticket = ticketService.transferTicket(id, request.targetSectorId(), request.targetAgentId(), request.targetAgentName());
         return ResponseEntity.ok(ticket);
     }
 
@@ -195,6 +196,12 @@ public class TicketController {
                 message.getSentAt()
         );
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/sector-history")
+    public ResponseEntity<List<TicketSectorHistory>> getTicketSectorHistory(@PathVariable UUID id) {
+        log.info("Recebida requisição para recuperar histórico de setores do ticket {}", id);
+        return ResponseEntity.ok(ticketService.getTicketSectorHistory(id));
     }
 
     @GetMapping("/sla-metrics")

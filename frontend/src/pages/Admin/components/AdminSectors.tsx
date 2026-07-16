@@ -156,13 +156,13 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
           placeholder="Pesquisar por setor..."
           value={searchSector}
           onChange={(e) => setSearchSector(e.target.value)}
-          className="w-full md:w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+          className="w-full md:w-80 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
         />
       </div>
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden hidden md:block">
+      <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
+            <thead className="bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-6 py-3.5">Nome Amigável</th>
                 <th className="px-6 py-3.5">Nome Técnico (Código)</th>
@@ -252,7 +252,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
         {filteredSectors.map((sect) => (
           <div 
             key={sect.id}
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4"
+            className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4"
           >
             {/* Header: Avatar, Name and Status */}
             <div className="flex justify-between items-start">
@@ -331,7 +331,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
           </div>
         ))}
         {filteredSectors.length === 0 && (
-          <div className="py-8 text-center text-slate-500 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="py-8 text-center text-slate-500 text-xs bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl">
             {searchSector ? 'Nenhum setor de atendimento encontrado para esta busca.' : 'Nenhum setor cadastrado no banco.'}
           </div>
         )}
@@ -344,7 +344,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
           onClick={() => setIsSectorDrawerOpen(false)}
         >
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
+            className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">

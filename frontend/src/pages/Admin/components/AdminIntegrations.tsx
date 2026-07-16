@@ -140,7 +140,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
           </p>
         </div>
 
-        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+        <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
           {evoSuccessMsg && (
             <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-250 dark:border-emerald-900/40 rounded-xl text-[11px] text-emerald-700 dark:text-emerald-400">
               {evoSuccessMsg}
@@ -268,7 +268,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Configuração de rede e Webhooks.</p>
         </div>
 
-        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+        <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
           <div className="flex items-center gap-3">
             <span className={`h-3 w-3 rounded-full ${evoStatus === 'OFFLINE' ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse shrink-0`}></span>
             <div>

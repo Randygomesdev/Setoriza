@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { History, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { History, Search, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { api } from '../../../services/api';
 import { formatTime, formatPhoneNumber, getChannelIcon } from '../../Chat/utils/chatHelpers';
 
@@ -12,6 +13,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
   usersList,
   sectorsList
 }) => {
+  const navigate = useNavigate();
   const [historyTickets, setHistoryTickets] = useState<any[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyPages, setHistoryPages] = useState(0);
@@ -77,7 +79,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
       </div>
 
       {/* Filter Card */}
-      <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {/* Filter Client */}
         <div className="space-y-1">
           <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Cliente / Whatsapp</label>
@@ -162,10 +164,10 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
       </div>
 
       {/* History table list (Desktop only) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden hidden md:block">
+      <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
+            <thead className="bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="px-6 py-3.5">Cliente</th>
                 <th className="px-6 py-3.5">Telefone</th>
@@ -173,6 +175,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
                 <th className="px-6 py-3.5">Atendente</th>
                 <th className="px-6 py-3.5">Status</th>
                 <th className="px-6 py-3.5">Última Atualização</th>
+                <th className="px-6 py-3.5 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-350">
@@ -209,18 +212,27 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
                   <td className="px-6 py-4 text-slate-400 dark:text-slate-550 font-medium">
                     {formatTime(ticket.updatedAt || ticket.createdAt)}
                   </td>
+                  <td className="px-6 py-4 text-center">
+                    <button
+                      onClick={() => navigate('/chat', { state: { selectTicketId: ticket.id } })}
+                      className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-bold shadow-md transition-all flex items-center justify-center gap-1 mx-auto cursor-pointer whitespace-nowrap"
+                    >
+                      <MessageSquare size={11} />
+                      Ver Conversa
+                    </button>
+                  </td>
                 </tr>
               ))}
               {historyTickets.length === 0 && !historyLoading && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-500">
+                  <td colSpan={7} className="text-center py-8 text-slate-500">
                     Nenhum chamado encontrado para os filtros selecionados.
                   </td>
                 </tr>
               )}
               {historyLoading && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-450">
+                  <td colSpan={7} className="text-center py-8 text-slate-450">
                     <div className="flex items-center justify-center gap-1.5">
                       <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                       Carregando dados...
@@ -234,7 +246,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
 
         {/* Pagination Controls */}
         {historyPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 flex justify-between items-center text-xs">
+          <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20 flex justify-between items-center text-xs">
             <span className="text-slate-500 dark:text-slate-400">
               Mostrando página <span className="font-semibold text-slate-700 dark:text-slate-200">{historyPage + 1}</span> de <span className="font-semibold text-slate-700 dark:text-slate-200">{historyPages}</span> ({historyTotal} registros)
             </span>
@@ -266,7 +278,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
         {historyTickets.map((ticket) => (
           <div 
             key={ticket.id}
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4"
+            className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4"
           >
             {/* Header: Client info and Status */}
             <div className="flex justify-between items-start">
@@ -310,20 +322,28 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
               </div>
               <div className="flex justify-between pt-1 border-t border-slate-50 dark:border-slate-850/45">
                 <span className="text-slate-400">Última Atualização:</span>
-                <span className="font-medium text-slate-400 dark:text-slate-500">{formatTime(ticket.updatedAt || ticket.createdAt)}</span>
+                <span className="font-medium text-slate-400 dark:text-slate-550">{formatTime(ticket.updatedAt || ticket.createdAt)}</span>
               </div>
+              <button
+                type="button"
+                onClick={() => navigate('/chat', { state: { selectTicketId: ticket.id } })}
+                className="w-full mt-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <MessageSquare size={13} />
+                Ver Conversa
+              </button>
             </div>
           </div>
         ))}
 
         {historyTickets.length === 0 && !historyLoading && (
-          <div className="py-8 text-center text-slate-500 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="py-8 text-center text-slate-500 text-xs bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl">
             Nenhum chamado encontrado para os filtros selecionados.
           </div>
         )}
         
         {historyLoading && (
-          <div className="py-8 text-center text-slate-450 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="py-8 text-center text-slate-450 text-xs bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl">
             <div className="flex items-center justify-center gap-1.5">
               <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
               Carregando dados...
@@ -333,7 +353,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
 
         {/* Mobile Pagination */}
         {historyPages > 1 && (
-          <div className="p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm flex justify-between items-center text-xs">
+          <div className="p-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex justify-between items-center text-xs">
             <span className="text-slate-500">
               Pág. {historyPage + 1}/{historyPages}
             </span>

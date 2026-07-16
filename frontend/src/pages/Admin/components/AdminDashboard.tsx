@@ -29,7 +29,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
       {/* Grid Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-500">
             <Activity size={18} />
           </div>
@@ -39,7 +39,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-500">
             <Clock size={18} />
           </div>
@@ -49,7 +49,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400">
             <Settings size={18} />
           </div>
@@ -59,7 +59,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3">
+        <div className="p-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-sm flex items-center gap-3">
           <div className="p-2.5 rounded-lg bg-purple-500/10 text-purple-500">
             <FolderOpen size={18} />
           </div>
@@ -69,7 +69,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-3 col-span-2 lg:col-span-1">
+        <div className="p-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-800/80 shadow-sm flex items-center gap-3 col-span-2 lg:col-span-1">
           <div className="p-2.5 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
             <CheckCircle size={18} />
           </div>
@@ -83,7 +83,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Visual Panels Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Sector Distrib */}
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm space-y-4">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Distribuição por Setor</h3>
           <div className="space-y-3.5">
             {sectorsList.map(sector => {
@@ -111,7 +111,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         {/* SLA and Performance */}
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm space-y-4">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Desempenho de SLA</h3>
           
           <div className="flex flex-col items-center justify-center py-3 space-y-2">
@@ -145,7 +145,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         {/* SLA Sector breakdown */}
-        <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800/80 shadow-sm space-y-4">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">SLA por Setor</h3>
           <div className="space-y-3.5">
             {sectorsList.map(sector => {
