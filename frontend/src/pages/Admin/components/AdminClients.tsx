@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, Briefcase, Phone, Trash2 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { formatCNPJ, formatPhone, formatPhoneOnly, formatPhoneNumber } from '../utils/adminHelpers';
@@ -216,7 +217,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
           placeholder="Pesquisar por razão social ou CNPJ..."
           value={searchClient}
           onChange={(e) => setSearchClient(e.target.value)}
-          className="w-full md:w-80 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+          className="w-full md:w-80 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
         />
       </div>
 
@@ -359,15 +360,16 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
         )}
       </div>
 
-      {/* Sliding Drawer for Clients */}
-      {isClientDrawerOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
-          onClick={() => setIsClientDrawerOpen(false)}
-        >
+      {isClientDrawerOpen && createPortal(
+        <>
+          {/* Backdrop */}
           <div 
-            className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setIsClientDrawerOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div 
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
@@ -415,7 +417,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
                     if (editingClient) setEditingClient({ ...editingClient, cnpj: e.target.value });
                     else setNewClient({ ...newClient, cnpj: e.target.value });
                   }}
-                  className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="00.000.000/0000-00"
                 />
               </div>
@@ -560,7 +562,8 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </>,
+        document.body
       )}
     </div>
   );

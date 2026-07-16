@@ -1,6 +1,5 @@
 package br.com.innkercode.ticket.service;
 
-import br.com.innkercode.ticket.client.EvolutionClient;
 import br.com.innkercode.ticket.domain.entity.Client;
 import br.com.innkercode.ticket.domain.entity.ClientContact;
 import br.com.innkercode.ticket.domain.entity.Sector;
@@ -31,7 +30,7 @@ public class ChatbotService {
 
     private final TicketService ticketService;
     private final MessageService messageService;
-    private final EvolutionClient evolutionClient;
+    private final WhatsAppGatewayService whatsAppGatewayService;
     private final S3Service s3Service;
     
     private final ClientRepository clientRepository;
@@ -65,6 +64,30 @@ public class ChatbotService {
         if (payload.getData().getKey() == null) {
             log.warn("Payload de webhook inválido recebido para evento: {}", event);
             return;
+        }
+
+        // Intercepta mensagens de protocolo (Edição e Exclusão)
+        WebhookPayload.WebhookMessage msg = payload.getData().getMessage();
+        if (msg != null && msg.getProtocolMessage() != null) {
+            WebhookPayload.ProtocolMessage protocol = msg.getProtocolMessage();
+            String originalMsgId = protocol.getKey() != null ? protocol.getKey().getId() : null;
+            if (originalMsgId != null) {
+                if ("MESSAGE_EDIT".equals(protocol.getType()) || "14".equals(protocol.getType())) {
+                    if (protocol.getEditedMessage() != null) {
+                        String newContent = extractTextContent(protocol.getEditedMessage());
+                        if (newContent != null && !newContent.isBlank()) {
+                            log.info("Processando edição de mensagem para o whatsappMsgId original: {}", originalMsgId);
+                            messageService.updateEditedMessage(originalMsgId, newContent + " (editada)");
+                        }
+                    }
+                    return; // Consome o webhook, não processa como nova mensagem
+                }
+                if ("REVOKE".equals(protocol.getType()) || "3".equals(protocol.getType())) {
+                    log.info("Processando exclusão de mensagem para o whatsappMsgId original: {}", originalMsgId);
+                    messageService.updateEditedMessage(originalMsgId, "🚫 Mensagem apagada");
+                    return; // Consome o webhook, não processa como nova mensagem
+                }
+            }
         }
 
         log.info("Processando webhook da Evolution API: Evento={}, ID={}, Remetente={}", 
@@ -115,7 +138,6 @@ public class ChatbotService {
         String clientName = payload.getData().getPushName();
         String messageId = payload.getData().getKey().getId();
 
-        // 1. Verificar se o número de WhatsApp pertence a algum contato já cadastrado
         Optional<ClientContact> contactOpt = clientContactRepository.findByWhatsappNumber(senderNumber);
 
         if (contactOpt.isEmpty()) {
@@ -147,7 +169,7 @@ public class ChatbotService {
                 } else {
                     String botMsg = "Por favor, informe o CNPJ da sua empresa (somente números) em formato de texto para podermos identificar seu cadastro.";
                     messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
-                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
+                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
                 }
             } else {
                 log.warn("Ticket {} de número desconhecido está em status inesperado: {}", ticket.getId(), ticket.getStatus());
@@ -174,7 +196,7 @@ public class ChatbotService {
                 } else {
                     String botMsg = "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.";
                     messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
-                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
+                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
                 }
             } else {
                 log.info("Ticket {} ativo em status {}, mensagem recebida.", ticket.getId(), ticket.getStatus());
@@ -186,7 +208,7 @@ public class ChatbotService {
         String msg = "Olá! Não identifiquei o seu número em nosso cadastro de atendimentos.\n\n" +
                      "Por favor, digite o *CNPJ da sua empresa* (somente números) para que eu possa localizar o seu cadastro:";
         messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, msg);
-        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), msg);
+        whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), msg);
     }
 
     private void handleCnpjInput(Ticket ticket, String input, String pushName) {
@@ -217,7 +239,7 @@ public class ChatbotService {
             String errorMsg = "⚠️ Desculpe, não localizei nenhuma empresa cadastrada com o CNPJ informado.\n\n" +
                               "Por favor, verifique o número e digite novamente (somente números), ou entre em contato com nosso suporte administrativo para atualizar o cadastro.";
             messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, errorMsg);
-            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
+            whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
         }
     }
 
@@ -228,7 +250,7 @@ public class ChatbotService {
             String errorMsg = "Olá! Identificamos a empresa " + companyName + ".\n\n" +
                               "Infelizmente não há nenhum setor de atendimento configurado no momento. Por favor, aguarde ou fale com o administrador.";
             messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, errorMsg);
-            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
+            whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
             return;
         }
 
@@ -242,7 +264,7 @@ public class ChatbotService {
 
         String triageMsg = sb.toString();
         messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, triageMsg);
-        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), triageMsg);
+        whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), triageMsg);
     }
 
     private void handleTriageInput(Ticket ticket, String input) {
@@ -265,7 +287,7 @@ public class ChatbotService {
                     selectedSector.getFriendlyName()
             );
             messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, confirmationMessage);
-            evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), confirmationMessage);
+            whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), confirmationMessage);
         } else {
             // Entrada inválida, reenviar menu
             sendInvalidOptionMenu(ticket, activeSectors);
@@ -280,23 +302,82 @@ public class ChatbotService {
         }
         String invalidMsg = sb.toString();
         messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, invalidMsg);
-        evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), invalidMsg);
+        whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), invalidMsg);
     }
 
     private String extractTextContent(WebhookPayload.WebhookMessage msg) {
         if (msg == null) return null;
+        
+        // 1. Conversa comum
         if (msg.getConversation() != null) {
             return msg.getConversation();
         }
-        if (msg.getExtendedTextMessage() != null && msg.getExtendedTextMessage().getText() != null) {
-            return msg.getExtendedTextMessage().getText();
+        
+        // 2. Resposta citada (Reply) ou texto estendido
+        if (msg.getExtendedTextMessage() != null) {
+            String text = msg.getExtendedTextMessage().getText();
+            WebhookPayload.ContextInfo contextInfo = msg.getExtendedTextMessage().getContextInfo();
+            if (contextInfo != null && contextInfo.getQuotedMessage() != null) {
+                String quotedText = extractTextContent(contextInfo.getQuotedMessage());
+                if (quotedText != null && !quotedText.isBlank()) {
+                    if (quotedText.length() > 60) {
+                        quotedText = quotedText.substring(0, 57) + "...";
+                    }
+                    return "↪️ Resposta a: \"" + quotedText + "\"\n" + (text != null ? text : "");
+                }
+            }
+            if (text != null) {
+                return text;
+            }
         }
+        
+        // 3. Reações com emojis
+        if (msg.getReactionMessage() != null) {
+            String emoji = msg.getReactionMessage().getText();
+            if (emoji != null && !emoji.isBlank()) {
+                return "Reagiu com " + emoji;
+            }
+        }
+        
+        // 4. Edições
+        if (msg.getProtocolMessage() != null) {
+            WebhookPayload.ProtocolMessage protocol = msg.getProtocolMessage();
+            if ("MESSAGE_EDIT".equals(protocol.getType()) || "14".equals(protocol.getType())) {
+                if (protocol.getEditedMessage() != null) {
+                    String newText = extractTextContent(protocol.getEditedMessage());
+                    if (newText != null && !newText.isBlank()) {
+                        return newText;
+                    }
+                }
+            }
+        }
+
+        // 5. Capturas de mídias e legendas como fallback descritivo
+        if (msg.getStickerMessage() != null) {
+            return "[Figurinha]";
+        }
+        if (msg.getImageMessage() != null) {
+            String caption = (String) msg.getImageMessage().get("caption");
+            return (caption != null && !caption.isBlank()) ? caption : "[Imagem]";
+        }
+        if (msg.getAudioMessage() != null) {
+            return "[Áudio]";
+        }
+        if (msg.getVideoMessage() != null) {
+            String caption = (String) msg.getVideoMessage().get("caption");
+            return (caption != null && !caption.isBlank()) ? caption : "[Vídeo]";
+        }
+        if (msg.getDocumentMessage() != null) {
+            String caption = (String) msg.getDocumentMessage().get("caption");
+            return (caption != null && !caption.isBlank()) ? caption : "[Documento]";
+        }
+        
         return null;
     }
 
     private MessageType determineMessageType(WebhookPayload.WebhookMessage msg) {
         if (msg == null) return MessageType.TEXTO;
-        if (msg.getImageMessage() != null) return MessageType.IMAGEM;
+        if (msg.getImageMessage() != null || msg.getStickerMessage() != null) return MessageType.IMAGEM;
         if (msg.getAudioMessage() != null || msg.getVideoMessage() != null || msg.getDocumentMessage() != null) {
             return MessageType.DOCUMENTO;
         }
@@ -315,6 +396,8 @@ public class ChatbotService {
             media = msg.getVideoMessage();
         } else if (msg.getDocumentMessage() != null) {
             media = msg.getDocumentMessage();
+        } else if (msg.getStickerMessage() != null) {
+            media = msg.getStickerMessage();
         }
 
         if (media == null) {
@@ -329,18 +412,11 @@ public class ChatbotService {
             } else {
                 log.warn("mediaKey is NULL!");
             }
-            String base64Data = evolutionClient.getBase64FromMediaMessage(messageData);
-            if (base64Data == null || base64Data.isBlank()) {
-                return null;
-            }
-
-            byte[] fileBytes;
-            if (base64Data.contains("base64,")) {
-                String base64Str = base64Data.split("base64,")[1];
-                fileBytes = java.util.Base64.getDecoder().decode(base64Str.trim());
-            } else {
-                fileBytes = java.util.Base64.getDecoder().decode(base64Data.trim());
-            }
+            
+            // Extrai o ID da mídia do payload (usado pela Meta Cloud API)
+            String mediaIdOrUrl = (String) media.get("id");
+            
+            byte[] fileBytes = whatsAppGatewayService.downloadMedia(messageData, mediaIdOrUrl);
 
             if (fileBytes != null && fileBytes.length > 0) {
                 String originalFilename = media.get("fileName") != null ? (String) media.get("fileName") : null;
@@ -350,6 +426,17 @@ public class ChatbotService {
                 byte[] processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
                 String processedFilename = ImageCompressor.getNewFilename(originalFilename);
                 String processedContentType = ImageCompressor.getNewContentType(contentType);
+
+                // Detecta se o vídeo é um GIF animado
+                boolean isGif = false;
+                if (msg.getVideoMessage() != null) {
+                    Object gifVal = media.get("gifPlayback");
+                    if (gifVal instanceof Boolean && (Boolean) gifVal) {
+                        isGif = true;
+                    } else if (gifVal instanceof String && "true".equalsIgnoreCase((String) gifVal)) {
+                        isGif = true;
+                    }
+                }
 
                 if (processedFilename == null) {
                     String extension = "";
@@ -365,10 +452,13 @@ public class ChatbotService {
                         extension = ".jpg";
                     } else if (processedContentType.contains("image/png")) {
                         extension = ".png";
+                    } else if (processedContentType.contains("image/webp") || processedContentType.contains("webp")) {
+                        extension = ".webp";
                     } else if (processedContentType.contains("application/pdf")) {
                         extension = ".pdf";
                     }
-                    processedFilename = "media_" + UUID.randomUUID() + extension;
+                    String prefix = isGif ? "gif_playback_" : "media_";
+                    processedFilename = prefix + UUID.randomUUID() + extension;
                 }
 
                 return s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
@@ -377,5 +467,110 @@ public class ChatbotService {
             log.error("Erro ao transferir mídia do gateway para o MinIO S3", e);
         }
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    @org.springframework.transaction.annotation.Transactional
+    public void processIncomingMetaWebhook(Map<String, Object> payload) {
+        if (payload == null || !payload.containsKey("entry")) {
+            return;
+        }
+
+        log.info("Processando webhook da Meta API...");
+
+        try {
+            List<Map<String, Object>> entries = (List<Map<String, Object>>) payload.get("entry");
+            if (entries == null) return;
+
+            for (Map<String, Object> entry : entries) {
+                List<Map<String, Object>> changes = (List<Map<String, Object>>) entry.get("changes");
+                if (changes == null) continue;
+
+                for (Map<String, Object> change : changes) {
+                    Map<String, Object> value = (Map<String, Object>) change.get("value");
+                    if (value == null || !value.containsKey("messages")) continue;
+
+                    // Extrair pushName
+                    String pushName = "Cliente WhatsApp";
+                    List<Map<String, Object>> contacts = (List<Map<String, Object>>) value.get("contacts");
+                    if (contacts != null && !contacts.isEmpty()) {
+                        Map<String, Object> contact = contacts.get(0);
+                        if (contact.containsKey("profile")) {
+                            Map<String, Object> profile = (Map<String, Object>) contact.get("profile");
+                            if (profile != null && profile.containsKey("name")) {
+                                pushName = (String) profile.get("name");
+                            }
+                        }
+                    }
+
+                    List<Map<String, Object>> messages = (List<Map<String, Object>>) value.get("messages");
+                    if (messages == null) continue;
+
+                    for (Map<String, Object> msg : messages) {
+                        String sender = (String) msg.get("from");
+                        String messageId = (String) msg.get("id");
+                        String type = (String) msg.get("type");
+
+                        if (sender == null || messageId == null || type == null) continue;
+
+                        log.info("Mensagem Meta recebida de {} - tipo: {}, id: {}", sender, type, messageId);
+
+                        // Determinar o tipo da mensagem e conteúdo
+                        MessageType messageType = MessageType.TEXTO;
+                        String content = null;
+
+                        if ("text".equals(type)) {
+                            Map<String, Object> textObj = (Map<String, Object>) msg.get("text");
+                            if (textObj != null) {
+                                content = (String) textObj.get("body");
+                            }
+                        } else if ("image".equals(type) || "audio".equals(type) || "video".equals(type) || "document".equals(type)) {
+                            Map<String, Object> mediaObj = (Map<String, Object>) msg.get(type);
+                            if (mediaObj != null) {
+                                String mediaId = (String) mediaObj.get("id");
+                                String filename = (String) mediaObj.get("filename");
+                                String mimeType = (String) mediaObj.get("mime_type");
+                                String caption = (String) mediaObj.get("caption");
+
+                                // Mapeia o tipo de mídia
+                                messageType = "image".equals(type) ? MessageType.IMAGEM : MessageType.DOCUMENTO;
+
+                                log.info("Mídia Meta encontrada (ID: {}). Baixando e enviando para o S3...", mediaId);
+                                
+                                byte[] fileBytes = whatsAppGatewayService.downloadMedia(null, mediaId);
+                                if (fileBytes != null && fileBytes.length > 0) {
+                                    byte[] processedBytes = ImageCompressor.compressImage(fileBytes, mimeType);
+                                    String processedFilename = ImageCompressor.getNewFilename(filename != null ? filename : "file");
+                                    String processedContentType = ImageCompressor.getNewContentType(mimeType != null ? mimeType : "application/octet-stream");
+
+                                    if (processedFilename == null || processedFilename.isBlank()) {
+                                        String extension = "image".equals(type) ? ".jpg" : ".bin";
+                                        processedFilename = "media_" + UUID.randomUUID() + extension;
+                                    }
+
+                                    content = s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
+                                }
+                            }
+                        }
+
+                        if (content == null || content.isBlank()) {
+                            content = "[Mensagem não suportada]";
+                        }
+
+                        // Verificar se o número de WhatsApp pertence a algum contato já cadastrado
+                        Optional<ClientContact> contactOpt = clientContactRepository.findByWhatsappNumber(sender);
+
+                        if (contactOpt.isEmpty()) {
+                            handleUnknownContact(sender, pushName, messageType, content, messageId);
+                        } else {
+                            ClientContact contact = contactOpt.get();
+                            handleKnownContact(contact, messageType, content, pushName, messageId);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erro ao processar webhook da Meta API", e);
+        }
     }
 }

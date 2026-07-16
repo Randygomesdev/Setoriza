@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, FolderOpen, AlertTriangle } from 'lucide-react';
 import { api } from '../../../services/api';
 import { formatTechnicalName } from '../utils/adminHelpers';
@@ -156,7 +157,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
           placeholder="Pesquisar por setor..."
           value={searchSector}
           onChange={(e) => setSearchSector(e.target.value)}
-          className="w-full md:w-80 bg-white dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+          className="w-full md:w-80 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
         />
       </div>
       <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden hidden md:block">
@@ -174,7 +175,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800/40 text-slate-700 dark:text-slate-350">
               {filteredSectors.map((sect) => (
-                <tr key={sect.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-955/20">
+                <tr key={sect.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
                   <td className="px-6 py-4 flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-emerald-500/20 text-blue-600 dark:text-blue-400 font-bold flex items-center justify-center uppercase">
                       {sect.friendlyName.slice(0, 2)}
@@ -337,15 +338,16 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
         )}
       </div>
 
-      {/* Sliding Drawer for Sectors */}
-      {isSectorDrawerOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
-          onClick={() => setIsSectorDrawerOpen(false)}
-        >
+      {isSectorDrawerOpen && createPortal(
+        <>
+          {/* Backdrop */}
           <div 
-            className="w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setIsSectorDrawerOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div 
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
@@ -377,7 +379,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
                     if (editingSector) setEditingSector({ ...editingSector, friendlyName: e.target.value });
                     else setNewSector({ ...newSector, friendlyName: e.target.value });
                   }}
-                  className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex: Comercial, Suporte Premium, TI"
                 />
               </div>
@@ -453,7 +455,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
                             if (editingSector) setEditingSector({ ...editingSector, autoCloseTimeoutMinutes: val });
                             else setNewSector({ ...newSector, autoCloseTimeoutMinutes: val });
                           }}
-                          className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
                       <div className="space-y-1">
@@ -476,7 +478,7 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
                     <div className="space-y-1">
                       <label className="text-[9px] uppercase font-bold text-slate-400">Mensagem de Alerta</label>
                       <textarea
-                        rows={2}
+                        rows={5}
                         value={editingSector ? editingSector.autoCloseWarningMessage : newSector.autoCloseWarningMessage}
                         onChange={(e) => {
                           if (editingSector) setEditingSector({ ...editingSector, autoCloseWarningMessage: e.target.value });
@@ -506,7 +508,8 @@ export const AdminSectors: React.FC<AdminSectorsProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </>,
+        document.body
       )}
     </div>
   );

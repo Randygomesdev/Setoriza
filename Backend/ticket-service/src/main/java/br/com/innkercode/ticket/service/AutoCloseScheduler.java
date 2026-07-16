@@ -1,6 +1,5 @@
 package br.com.innkercode.ticket.service;
 
-import br.com.innkercode.ticket.client.EvolutionClient;
 import br.com.innkercode.ticket.domain.entity.Ticket;
 import br.com.innkercode.ticket.domain.entity.Sector;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
@@ -24,7 +23,7 @@ public class AutoCloseScheduler {
     private final TicketRepository ticketRepository;
     private final TicketService ticketService;
     private final MessageService messageService;
-    private final EvolutionClient evolutionClient;
+    private final WhatsAppGatewayService whatsAppGatewayService;
 
     @Scheduled(cron = "0 */1 * * * *") // Roda a cada 1 minuto
     @Transactional
@@ -64,9 +63,9 @@ public class AutoCloseScheduler {
                 // Salva a mensagem no histórico como SISTEMA
                 messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, closeMessage);
 
-                // Dispara no WhatsApp via Evolution
+                // Dispara no WhatsApp via Gateway Service
                 try {
-                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), closeMessage);
+                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), closeMessage);
                 } catch (Exception e) {
                     log.error("Erro ao enviar mensagem de encerramento via WhatsApp para o ticket {}: {}", ticket.getId(), e.getMessage());
                 }
@@ -89,9 +88,9 @@ public class AutoCloseScheduler {
                 // Salva a mensagem no histórico como SISTEMA
                 messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, warningMessage);
 
-                // Dispara no WhatsApp via Evolution
+                // Dispara no WhatsApp via Gateway Service
                 try {
-                    evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), warningMessage);
+                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), warningMessage);
                 } catch (Exception e) {
                     log.error("Erro ao enviar mensagem de aviso via WhatsApp para o ticket {}: {}", ticket.getId(), e.getMessage());
                 }

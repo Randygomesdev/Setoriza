@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, Settings, Users } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import { api } from '../../../services/api';
@@ -236,15 +237,16 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
         )}
       </div>
 
-      {/* Sliding Drawer for Users */}
-      {isUserDrawerOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
-          onClick={() => setIsUserDrawerOpen(false)}
-        >
+      {isUserDrawerOpen && createPortal(
+        <>
+          {/* Backdrop */}
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setIsUserDrawerOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div 
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
@@ -385,7 +387,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </>,
+        document.body
       )}
     </div>
   );

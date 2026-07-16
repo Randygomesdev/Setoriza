@@ -21,7 +21,8 @@ import {
   FileText,
   ChevronDown,
   ChevronRight,
-  History as HistoryIcon
+  History as HistoryIcon,
+  Video
 } from 'lucide-react';
 import { formatPhoneNumber, formatCNPJ } from '../utils/chatHelpers';
 
@@ -66,7 +67,7 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
 
   // Local states for file filters and ZIP
   const [fileFilterOrigin, setFileFilterOrigin] = useState<'ALL' | 'SENT' | 'RECEIVED'>('ALL');
-  const [fileFilterTypes, setFileFilterTypes] = useState<string[]>(['IMAGEM', 'AUDIO', 'DOCUMENTO']);
+  const [fileFilterTypes, setFileFilterTypes] = useState<string[]>(['IMAGEM', 'AUDIO', 'VIDEO', 'DOCUMENTO']);
   const [zipLoading, setZipLoading] = useState(false);
 
   // Local states for transfer
@@ -166,6 +167,14 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
           } else if (msg.messageType === 'AUDIO') {
             folderName = 'Audios';
             extension = '.webm';
+          } else if (
+            (msg.content || '').toLowerCase().endsWith('.mp4') ||
+            (msg.content || '').toLowerCase().endsWith('.mov') ||
+            (msg.content || '').toLowerCase().endsWith('.avi') ||
+            (msg.content || '').toLowerCase().includes('gif_playback')
+          ) {
+            folderName = 'Videos';
+            extension = (msg.content || '').toLowerCase().includes('gif_playback') ? '.mp4' : msg.content.substring(msg.content.lastIndexOf('.'));
           } else if (msg.messageType === 'DOCUMENTO') {
             folderName = 'Documentos';
             const urlObj = new URL(msg.content);
@@ -245,6 +254,13 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
           (msg.content || '').toLowerCase().includes('voice_message')
         ) {
           text = `<Áudio enviado/recebido: ${msg.content}>`;
+        } else if (
+          (msg.content || '').toLowerCase().endsWith('.mp4') ||
+          (msg.content || '').toLowerCase().endsWith('.mov') ||
+          (msg.content || '').toLowerCase().endsWith('.avi') ||
+          (msg.content || '').toLowerCase().includes('gif_playback')
+        ) {
+          text = `<Vídeo enviado/recebido: ${msg.content}>`;
         } else if (msg.messageType === 'DOCUMENTO') {
           const fileName = msg.content.substring(msg.content.lastIndexOf('/') + 1);
           text = `<Documento Anexado: ${fileName} (${msg.content})>`;
@@ -646,6 +662,18 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                   </button>
                   <button
                     type="button"
+                    onClick={() => toggleFileTypeFilter('VIDEO')}
+                    title="Vídeos / GIFs"
+                    className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center border ${
+                      fileFilterTypes.includes('VIDEO')
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                        : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    <Video size={12} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => toggleFileTypeFilter('DOCUMENTO')}
                     title="Documentos / PDFs"
                     className={`p-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center border ${
@@ -667,7 +695,7 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                 if (msg.messageType !== 'IMAGEM' && msg.messageType !== 'DOCUMENTO') return false;
                 
                 // 1. Determine actual visual category
-                let category: 'IMAGEM' | 'AUDIO' | 'DOCUMENTO' = 'DOCUMENTO';
+                let category: 'IMAGEM' | 'AUDIO' | 'VIDEO' | 'DOCUMENTO' = 'DOCUMENTO';
                 if (msg.messageType === 'IMAGEM') {
                   category = 'IMAGEM';
                 } else if (
@@ -678,6 +706,13 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                   (msg.content || '').toLowerCase().includes('voice_message')
                 ) {
                   category = 'AUDIO';
+                } else if (
+                  (msg.content || '').toLowerCase().endsWith('.mp4') ||
+                  (msg.content || '').toLowerCase().endsWith('.mov') ||
+                  (msg.content || '').toLowerCase().endsWith('.avi') ||
+                  (msg.content || '').toLowerCase().includes('gif_playback')
+                ) {
+                  category = 'VIDEO';
                 }
                 
                 // Filter by categories/types selection
@@ -705,6 +740,10 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                                       (msg.content || '').toLowerCase().endsWith('.opus') ||
                                       (msg.content || '').toLowerCase().endsWith('.mp3') ||
                                       (msg.content || '').toLowerCase().includes('voice_message');
+                        const isVid = (msg.content || '').toLowerCase().endsWith('.mp4') ||
+                                      (msg.content || '').toLowerCase().endsWith('.mov') ||
+                                      (msg.content || '').toLowerCase().endsWith('.avi') ||
+                                      (msg.content || '').toLowerCase().includes('gif_playback');
                         
                         return (
                           <div
@@ -722,6 +761,10 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                               <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center shrink-0 border border-blue-200/40 dark:border-blue-900/30">
                                 <Mic size={14} />
                               </div>
+                            ) : isVid ? (
+                              <div className="h-8 w-8 rounded-lg bg-purple-55 dark:bg-purple-950/40 text-purple-500 flex items-center justify-center shrink-0 border border-purple-200/40 dark:border-purple-900/30">
+                                <Video size={14} />
+                              </div>
                             ) : (
                               <div className="h-8 w-8 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-500 flex items-center justify-center shrink-0">
                                 <Paperclip size={14} />
@@ -731,8 +774,10 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                               <p className="text-[10px] font-medium text-slate-700 dark:text-slate-300 truncate">
                                 {msg.content.substring(msg.content.lastIndexOf('/') + 1)}
                               </p>
-                              <span className={`text-[8px] uppercase font-bold ${isAud ? 'text-blue-500' : 'text-slate-400'}`}>
-                                {isAud ? 'ÁUDIO' : msg.messageType}
+                              <span className={`text-[8px] uppercase font-bold ${
+                                isAud ? 'text-blue-500' : isVid ? 'text-purple-550' : 'text-slate-400'
+                              }`}>
+                                {isAud ? 'ÁUDIO' : isVid ? 'VÍDEO' : msg.messageType}
                               </span>
                             </div>
                             <a
