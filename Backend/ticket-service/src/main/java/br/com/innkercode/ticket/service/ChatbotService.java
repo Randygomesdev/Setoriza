@@ -66,6 +66,30 @@ public class ChatbotService {
             return;
         }
 
+        // Intercepta mensagens de protocolo (Edição e Exclusão)
+        WebhookPayload.WebhookMessage msg = payload.getData().getMessage();
+        if (msg != null && msg.getProtocolMessage() != null) {
+            WebhookPayload.ProtocolMessage protocol = msg.getProtocolMessage();
+            String originalMsgId = protocol.getKey() != null ? protocol.getKey().getId() : null;
+            if (originalMsgId != null) {
+                if ("MESSAGE_EDIT".equals(protocol.getType()) || "14".equals(protocol.getType())) {
+                    if (protocol.getEditedMessage() != null) {
+                        String newContent = extractTextContent(protocol.getEditedMessage());
+                        if (newContent != null && !newContent.isBlank()) {
+                            log.info("Processando edição de mensagem para o whatsappMsgId original: {}", originalMsgId);
+                            messageService.updateEditedMessage(originalMsgId, newContent + " (editada)");
+                        }
+                    }
+                    return; // Consome o webhook, não processa como nova mensagem
+                }
+                if ("REVOKE".equals(protocol.getType()) || "3".equals(protocol.getType())) {
+                    log.info("Processando exclusão de mensagem para o whatsappMsgId original: {}", originalMsgId);
+                    messageService.updateEditedMessage(originalMsgId, "🚫 Mensagem apagada");
+                    return; // Consome o webhook, não processa como nova mensagem
+                }
+            }
+        }
+
         log.info("Processando webhook da Evolution API: Evento={}, ID={}, Remetente={}", 
                 event, 
                 payload.getData().getKey().getId(), 
@@ -283,12 +307,68 @@ public class ChatbotService {
 
     private String extractTextContent(WebhookPayload.WebhookMessage msg) {
         if (msg == null) return null;
+        
+        // 1. Conversa comum
         if (msg.getConversation() != null) {
             return msg.getConversation();
         }
-        if (msg.getExtendedTextMessage() != null && msg.getExtendedTextMessage().getText() != null) {
-            return msg.getExtendedTextMessage().getText();
+        
+        // 2. Resposta citada (Reply) ou texto estendido
+        if (msg.getExtendedTextMessage() != null) {
+            String text = msg.getExtendedTextMessage().getText();
+            WebhookPayload.ContextInfo contextInfo = msg.getExtendedTextMessage().getContextInfo();
+            if (contextInfo != null && contextInfo.getQuotedMessage() != null) {
+                String quotedText = extractTextContent(contextInfo.getQuotedMessage());
+                if (quotedText != null && !quotedText.isBlank()) {
+                    if (quotedText.length() > 60) {
+                        quotedText = quotedText.substring(0, 57) + "...";
+                    }
+                    return "↪️ Resposta a: \"" + quotedText + "\"\n" + (text != null ? text : "");
+                }
+            }
+            if (text != null) {
+                return text;
+            }
         }
+        
+        // 3. Reações com emojis
+        if (msg.getReactionMessage() != null) {
+            String emoji = msg.getReactionMessage().getText();
+            if (emoji != null && !emoji.isBlank()) {
+                return "Reagiu com " + emoji;
+            }
+        }
+        
+        // 4. Edições
+        if (msg.getProtocolMessage() != null) {
+            WebhookPayload.ProtocolMessage protocol = msg.getProtocolMessage();
+            if ("MESSAGE_EDIT".equals(protocol.getType()) || "14".equals(protocol.getType())) {
+                if (protocol.getEditedMessage() != null) {
+                    String newText = extractTextContent(protocol.getEditedMessage());
+                    if (newText != null && !newText.isBlank()) {
+                        return newText;
+                    }
+                }
+            }
+        }
+
+        // 5. Capturas de mídias e legendas como fallback descritivo
+        if (msg.getImageMessage() != null) {
+            String caption = (String) msg.getImageMessage().get("caption");
+            return (caption != null && !caption.isBlank()) ? caption : "[Imagem]";
+        }
+        if (msg.getAudioMessage() != null) {
+            return "[Áudio]";
+        }
+        if (msg.getVideoMessage() != null) {
+            String caption = (String) msg.getVideoMessage().get("caption");
+            return (caption != null && !caption.isBlank()) ? caption : "[Vídeo]";
+        }
+        if (msg.getDocumentMessage() != null) {
+            String caption = (String) msg.getDocumentMessage().get("caption");
+            return (caption != null && !caption.isBlank()) ? caption : "[Documento]";
+        }
+        
         return null;
     }
 

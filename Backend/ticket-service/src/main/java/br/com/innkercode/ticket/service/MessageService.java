@@ -157,4 +157,18 @@ public class MessageService {
         }
         return null;
     }
+
+    @Transactional
+    public Message updateEditedMessage(String whatsappMsgId, String newContent) {
+        log.info("Processando edição de mensagem: whatsappMsgId = {}, novo conteúdo = {}", whatsappMsgId, newContent);
+        java.util.Optional<Message> messageOpt = messageRepository.findByWhatsappMsgId(whatsappMsgId);
+        if (messageOpt.isPresent()) {
+            Message message = messageOpt.get();
+            message.setContent(newContent);
+            Message saved = messageRepository.save(message);
+            eventPublisher.publish("MESSAGE_RECEIVED", message.getTicket().getId().toString(), saved);
+            return saved;
+        }
+        return null;
+    }
 }
