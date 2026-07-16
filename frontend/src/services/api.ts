@@ -150,11 +150,15 @@ export const api = {
       });
     },
     
-    transfer: async (id: string, targetSectorId?: string, targetAgentId?: string) => {
+    transfer: async (id: string, targetSectorId?: string, targetAgentId?: string, targetAgentName?: string) => {
       return request<any>(`/tickets/${id}/transfer`, {
         method: 'POST',
-        body: JSON.stringify({ targetSectorId, targetAgentId }),
+        body: JSON.stringify({ targetSectorId, targetAgentId, targetAgentName }),
       });
+    },
+
+    getSectorHistory: async (id: string) => {
+      return request<any[]>(`/tickets/${id}/sector-history`);
     },
     
     getMessages: async (id: string) => {

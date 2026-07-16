@@ -242,7 +242,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
           </p>
         </div>
 
-        <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+        <div className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
           
           {activeConfig.apiType === 'META' ? (
             <div className="space-y-6">
@@ -473,13 +473,27 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Defina qual API de envio o escritório irá utilizar.</p>
         </div>
 
-        <form onSubmit={handleSaveConfig} className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4">
+        <form onSubmit={handleSaveConfig} className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4">
+          
+          {/* Status do Conector (mostrado apenas se estiver no modo Evolution) */}
+          {activeConfig.apiType === 'EVOLUTION' && (
+            <div className="flex items-center gap-3 p-3 bg-slate-50/50 dark:bg-slate-950/40 border border-slate-200/60 dark:border-slate-800/80 rounded-xl">
+              <span className={`h-3 w-3 rounded-full ${evoStatus === 'OFFLINE' ? 'bg-red-500' : 'bg-emerald-500'} animate-pulse shrink-0`}></span>
+              <div>
+                <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                  {evoStatus === 'OFFLINE' ? 'API Inalcançável' : 'Conector Online'}
+                </h4>
+                <p className="text-[10px] text-slate-500 mt-0.5">API: {evoConfig.baseUrl}</p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1">
             <label className="text-[10px] uppercase font-bold text-slate-400">Canal de Envio Ativo</label>
             <select
               value={activeConfig.apiType}
               onChange={(e) => setActiveConfig({ ...activeConfig, apiType: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full bg-white dark:bg-slate-955 border border-slate-250 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none"
             >
               <option value="EVOLUTION">Evolution API (QR Code)</option>
               <option value="META">API Oficial da Meta (Cloud API)</option>

@@ -60,7 +60,7 @@ interface ChatState {
   selectTicket: (ticketId: string | null) => Promise<void>;
   claimTicket: (ticketId: string) => Promise<void>;
   resolveTicket: (ticketId: string) => Promise<void>;
-  transferTicket: (ticketId: string, targetSectorId?: string, targetAgentId?: string) => Promise<void>;
+  transferTicket: (ticketId: string, targetSectorId?: string, targetAgentId?: string, targetAgentName?: string) => Promise<void>;
   sendOperatorMessage: (ticketId: string, content: string) => Promise<void>;
   sendOperatorMediaMessage: (ticketId: string, file: File, caption?: string) => Promise<void>;
   createTicket: (whatsappNumber: string, clientName: string, sectorId: string) => Promise<any>;
@@ -162,9 +162,9 @@ export const useChatStore = create<ChatState>((set) => ({
     }
   },
 
-  transferTicket: async (ticketId: string, targetSectorId?: string, targetAgentId?: string) => {
+  transferTicket: async (ticketId: string, targetSectorId?: string, targetAgentId?: string, targetAgentName?: string) => {
     try {
-      const updatedTicket = await api.tickets.transfer(ticketId, targetSectorId, targetAgentId);
+      const updatedTicket = await api.tickets.transfer(ticketId, targetSectorId, targetAgentId, targetAgentName);
       
       // If operator doesn't belong to the sector anymore (or if the ticket status changes), 
       // we might want to let the event handler or the state manage it. Let's update local ticket.
