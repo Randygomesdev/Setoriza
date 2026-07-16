@@ -511,6 +511,8 @@ export const Chat: React.FC = () => {
         isViewingFromHistory={isViewingFromHistory}
         onImageClick={setPreviewImageUrl}
         onViewModeChange={setViewMode}
+        showDetailsPanel={showDetailsPanel}
+        onToggleDetails={() => setShowDetailsPanel(!showDetailsPanel)}
       />
 
       {/* COLUMN 3: RIGHT DETAILS PANEL */}

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
-import { formatTime, getChannelIcon } from '../utils/chatHelpers';
+import { formatTime, getChannelIcon, formatPhoneNumber } from '../utils/chatHelpers';
 import { useToast } from '../../../context/ToastContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 import {
@@ -16,7 +16,8 @@ import {
   Mic,
   X,
   Download,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Info
 } from 'lucide-react';
 
 interface ChatAreaProps {
@@ -24,13 +25,17 @@ interface ChatAreaProps {
   isViewingFromHistory: boolean;
   onImageClick: (url: string) => void;
   onViewModeChange: (mode: 'chat' | 'history') => void;
+  showDetailsPanel: boolean;
+  onToggleDetails: () => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
   usersList,
   isViewingFromHistory,
   onImageClick,
-  onViewModeChange
+  onViewModeChange,
+  showDetailsPanel,
+  onToggleDetails
 }) => {
   const { user } = useAuthStore();
   const { addToast } = useToast();
@@ -261,25 +266,25 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderMessageStatus = (status: string) => {
+  const renderMessageStatus = (status: string, isMeBubble = false) => {
     if (!status) return null;
     const s = status.toUpperCase();
     if (s === 'SENT') {
-      return <Check size={12} className="text-slate-400 dark:text-slate-500" />;
+      return <Check size={12} className={isMeBubble ? "text-blue-200/90" : "text-slate-400 dark:text-slate-500"} />;
     }
     if (s === 'DELIVERED') {
       return (
         <div className="flex -space-x-1.5 items-center">
-          <Check size={12} className="text-slate-400 dark:text-slate-500" />
-          <Check size={12} className="text-slate-400 dark:text-slate-500" />
+          <Check size={12} className={isMeBubble ? "text-blue-200/90" : "text-slate-400 dark:text-slate-500"} />
+          <Check size={12} className={isMeBubble ? "text-blue-200/90" : "text-slate-400 dark:text-slate-500"} />
         </div>
       );
     }
     if (s === 'READ' || s === 'PLAYED') {
       return (
         <div className="flex -space-x-1.5 items-center">
-          <Check size={12} className="text-blue-400" />
-          <Check size={12} className="text-blue-400" />
+          <Check size={12} className={isMeBubble ? "text-sky-200" : "text-blue-500 dark:text-blue-400"} />
+          <Check size={12} className={isMeBubble ? "text-sky-200" : "text-blue-500 dark:text-blue-400"} />
         </div>
       );
     }
@@ -324,7 +329,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            {activeTicket.whatsappNumber} 
+            {formatPhoneNumber(activeTicket.whatsappNumber)} 
             {activeTicket.sector && (
               <>
                 <span className="text-slate-300 dark:text-slate-600">•</span>
@@ -462,11 +467,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </button>
             </div>
           ) : (
-            <div className="py-1 px-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-2xs uppercase rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-1 select-none">
-              <Clock size={10} />
+            <div className="py-1.5 px-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 select-none shadow-sm">
+              <Clock size={12} />
               {activeTicket.status === 'CONCLUIDO' ? 'Finalizado' : 'Visualizando'}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={onToggleDetails}
+            className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center cursor-pointer select-none shrink-0 ${
+              showDetailsPanel
+                ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/80'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+            }`}
+            title={showDetailsPanel ? "Ocultar Detalhes" : "Exibir Detalhes"}
+          >
+            <Info size={16} />
+          </button>
         </div>
       </div>
 
@@ -549,9 +567,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </p>
                   )}
                   
-                  <span className="text-[9px] text-slate-400 dark:text-slate-500 shrink-0 self-end mt-1 select-none flex items-center gap-1 font-medium">
+                  <span className={`text-[9px] shrink-0 self-end mt-1 select-none flex items-center gap-1 font-medium ${
+                    isMe ? 'text-blue-200/90' : 'text-slate-400 dark:text-slate-500'
+                  }`}>
                     {formatTime(msg.sentAt)}
-                    {isMe && renderMessageStatus(msg.status || 'SENT')}
+                    {isMe && renderMessageStatus(msg.status || 'SENT', true)}
                   </span>
                 </div>
               </div>

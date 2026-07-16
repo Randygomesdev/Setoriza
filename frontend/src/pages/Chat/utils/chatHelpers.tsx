@@ -16,7 +16,7 @@ export const formatPhoneNumber = (phone: string) => {
     const ddd = cleanPhone.substring(2, 4);
     const firstPart = cleanPhone.substring(4, cleanPhone.length - 4);
     const lastPart = cleanPhone.substring(cleanPhone.length - 4);
-    return `+55 (${ddd}) ${firstPart}-${lastPart}`;
+    return `(${ddd}) ${firstPart}-${lastPart}`;
   }
   if (cleanPhone.length === 11) {
     const ddd = cleanPhone.substring(0, 2);
@@ -31,6 +31,18 @@ export const formatPhoneNumber = (phone: string) => {
     return `(${ddd}) ${firstPart}-${lastPart}`;
   }
   return phone;
+};
+
+export const formatCNPJ = (cnpj: string) => {
+  if (!cnpj) return '';
+  const cleanCnpj = cnpj.replace(/\D/g, '');
+  if (cleanCnpj.length === 14) {
+    return cleanCnpj.replace(
+      /^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,
+      '$1.$2.$3/$4-$5'
+    );
+  }
+  return cnpj;
 };
 
 export const getChannelIcon = (number: string) => {
