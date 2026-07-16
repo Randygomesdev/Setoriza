@@ -17,7 +17,8 @@ import {
   X,
   Download,
   ArrowRightLeft,
-  Info
+  Info,
+  Smile
 } from 'lucide-react';
 
 interface ChatAreaProps {
@@ -72,6 +73,33 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [showTransferPopover, setShowTransferPopover] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState('');
   const [transferAgentId, setTransferAgentId] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Fechar popover de emoji ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const commonEmojis = [
+    // Smiles & Emotion
+    '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😋', '😛', '😜', '🤪', '😎', '🥳', '😏', '😒', '😞', '😔', '😟', '😭', '😤', '😠', '😡', '🤯', '😳', '🥵', '🥶', '😱', '🤗', '🤔', '🫣', '🤫', '🫠', '😐', '😬', 
+    // Hand Gestures & People
+    '👍', '👎', '👊', '✊', '🤛', '🤜', '🤞', '✌️', '🤟', '🤘', '👌', '🤌', '🤏', '🫵', '👉', '👈', '👆', '👇', '👋', '🤚', '🙏', '👏', '🙌', '💪', '🧠', '👀', 
+    // Hearts & Symbols
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '🌟', '⭐', '✨', '⚡', '💥', '🔥', '🌈', '☀️', '💧', '🌊', '🍀', '🎉', '🎊', '🎁', '🎈', '🏆', 
+    // Objects & Office
+    '💼', '📁', '📂', '📄', '📑', '📊', '📈', '📉', '🗒️', '🗑️', '📌', '📍', '📎', '🔒', '🔓', '🔑', '💡', '🔔', '📢', '🔍', '✉️', '📧', '📝', '💻', '📱', '📞'
+  ];
 
   // Auto-scroll when messages change
   useEffect(() => {
@@ -657,6 +685,40 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             ) : (
               <>
+                {/* Emoji Trigger & Popover */}
+                <div className="relative flex items-center" ref={emojiPickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-white transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-700/60 flex items-center justify-center shrink-0 ${
+                      showEmojiPicker ? 'text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/30' : ''
+                    }`}
+                    title="Inserir emoji"
+                  >
+                    <Smile size={16} />
+                  </button>
+
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-14 left-0 z-50 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-64 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      <div className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wide mb-2 px-1">
+                        Emojis Populares
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5 max-h-40 overflow-y-auto scrollbar-thin pr-1">
+                        {commonEmojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setMessageText((prev) => prev + emoji)}
+                            className="text-lg hover:scale-125 transition-transform p-1 flex items-center justify-center cursor-pointer select-none rounded-lg hover:bg-slate-500/10 active:bg-slate-500/20"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <input
                   type="text"
                   placeholder="Escreva sua mensagem..."
