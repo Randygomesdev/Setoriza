@@ -346,6 +346,20 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
             <span className="text-slate-500">Canal:</span>
             <span className="font-semibold text-slate-700 dark:text-slate-300">WhatsApp</span>
           </div>
+          <div className="flex justify-between text-[10px] items-center border-t border-slate-150 dark:border-slate-800/40 pt-1.5">
+            <span className="text-slate-500">Abertura:</span>
+            <span className="font-semibold text-slate-750 dark:text-slate-300">
+              {activeTicket.createdAt ? new Date(activeTicket.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
+            </span>
+          </div>
+          {activeTicket.status === 'CONCLUIDO' && activeTicket.resolvedAt && (
+            <div className="flex justify-between text-[10px] items-center">
+              <span className="text-slate-500">Fechamento:</span>
+              <span className="font-semibold text-slate-750 dark:text-slate-300">
+                {new Date(activeTicket.resolvedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -453,6 +467,27 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
               </div>
             ) : (
               <div className="relative pl-3 border-l-2 border-slate-200 dark:border-slate-800 ml-1.5 py-1 space-y-4">
+                {/* Special Node: Chamado Aberto */}
+                {activeTicket.createdAt && (
+                  <div className="relative text-[10px] leading-normal">
+                    <span className="absolute -left-[17.5px] top-1 h-2 w-2 rounded-full bg-emerald-500 border border-white dark:border-slate-900 shadow-sm" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        🚀 Chamado Aberto
+                      </span>
+                      <span className="text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        Abertura: {new Date(activeTicket.createdAt).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sector History Nodes */}
                 {sectorHistory.map((hist: any, idx: number) => {
                   const entryTime = new Date(hist.enteredAt).toLocaleString('pt-BR', {
                     day: '2-digit',
@@ -460,6 +495,12 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                     hour: '2-digit',
                     minute: '2-digit'
                   });
+                  const claimTime = hist.claimedAt ? new Date(hist.claimedAt).toLocaleString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  }) : null;
                   const agentName = hist.assignedAgentId 
                     ? (usersList.find(u => u.id === hist.assignedAgentId)?.name || 'Atendente')
                     : 'Fila do Setor';
@@ -471,11 +512,24 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                       
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {hist.sector?.friendlyName || 'Setor Inicial'}
+                          Setor: {hist.sector?.friendlyName || 'Setor Inicial'}
                         </span>
-                        <span className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5">
-                          Atendente: <strong className="text-slate-650 dark:text-slate-350">{agentName}</strong>
-                        </span>
+                        {hist.assignedAgentId ? (
+                          <>
+                            <span className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              Atendente: <strong className="text-slate-650 dark:text-slate-350">{agentName}</strong>
+                            </span>
+                            {claimTime && (
+                              <span className="text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">
+                                Assumido em: {claimTime}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-[9px] text-slate-450 dark:text-slate-500 italic mt-0.5">
+                            Aguardando na fila do setor
+                          </span>
+                        )}
                         <span className="text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">
                           Entrada: {entryTime}
                           {hist.exitedAt && (
@@ -494,6 +548,26 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                     </div>
                   );
                 })}
+
+                {/* Special Node: Chamado Concluído */}
+                {activeTicket.status === 'CONCLUIDO' && activeTicket.resolvedAt && (
+                  <div className="relative text-[10px] leading-normal">
+                    <span className="absolute -left-[17.5px] top-1 h-2 w-2 rounded-full bg-slate-400 dark:bg-slate-600 border border-white dark:border-slate-900 shadow-sm" />
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        ✅ Chamado Concluído
+                      </span>
+                      <span className="text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        Fechamento: {new Date(activeTicket.resolvedAt).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
