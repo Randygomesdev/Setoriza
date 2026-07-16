@@ -251,13 +251,29 @@ export const api = {
     list: async () => {
       return request<any[]>('/clients');
     },
-    create: async (client: { companyName: string; cnpj: string }) => {
+    create: async (client: { 
+      companyName: string; 
+      cnpj: string;
+      whatsappApiType?: string;
+      metaPhoneNumberId?: string;
+      metaAccessToken?: string;
+      metaWabaId?: string;
+      metaVerifyToken?: string;
+    }) => {
       return request<any>('/clients', {
         method: 'POST',
         body: JSON.stringify(client),
       });
     },
-    update: async (id: string, client: { companyName: string; cnpj: string }) => {
+    update: async (id: string, client: { 
+      companyName: string; 
+      cnpj: string;
+      whatsappApiType?: string;
+      metaPhoneNumberId?: string;
+      metaAccessToken?: string;
+      metaWabaId?: string;
+      metaVerifyToken?: string;
+    }) => {
       return request<any>(`/clients/${id}`, {
         method: 'PUT',
         body: JSON.stringify(client),
@@ -302,6 +318,20 @@ export const api = {
       return request<any>('/tickets/integration/webhook', {
         method: 'POST',
         body: JSON.stringify({ serverUrl }),
+      });
+    },
+    getConfig: async () => {
+      return request<any>('/tickets/integration/config');
+    },
+    updateConfig: async (config: any) => {
+      return request<any>('/tickets/integration/config', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      });
+    },
+    testMeta: async () => {
+      return request<any>('/tickets/integration/test-meta', {
+        method: 'POST',
       });
     },
   },

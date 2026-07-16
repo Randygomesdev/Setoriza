@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.innkercode.ticket.client.EvolutionClient;
 import br.com.innkercode.ticket.util.ImageCompressor;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +25,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final TicketRepository ticketRepository;
     private final TicketEventPublisher eventPublisher;
-    private final EvolutionClient evolutionClient;
+    private final WhatsAppGatewayService whatsAppGatewayService;
     private final S3Service s3Service;
 
     public List<Message> getMessagesByTicketId(UUID ticketId) {
@@ -68,8 +67,8 @@ public class MessageService {
         // 1. Salva a mensagem no banco local como COLABORADOR
         Message savedMessage = saveMessage(ticket, SenderType.COLABORADOR, MessageType.TEXTO, content);
         
-        // 2. Dispara a mensagem para o cliente via Evolution API
-        String whatsappMsgId = evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), content);
+        // 2. Dispara a mensagem para o cliente via Gateway Service
+        String whatsappMsgId = whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), content);
         if (whatsappMsgId != null) {
             savedMessage.setWhatsappMsgId(whatsappMsgId);
             savedMessage = messageRepository.save(savedMessage);
@@ -120,12 +119,12 @@ public class MessageService {
             }
         }
         
-        // 5. Dispara a mensagem para o cliente via Evolution API
+        // 5. Dispara a mensagem para o cliente via Gateway Service
         String whatsappMsgId;
         if ("audio".equals(mediatype)) {
-            whatsappMsgId = evolutionClient.sendWhatsAppAudio(ticket.getWhatsappNumber(), s3Url);
+            whatsappMsgId = whatsAppGatewayService.sendWhatsAppAudio(ticket.getWhatsappNumber(), s3Url);
         } else {
-            whatsappMsgId = evolutionClient.sendMediaMessage(
+            whatsappMsgId = whatsAppGatewayService.sendMediaMessage(
                     ticket.getWhatsappNumber(), 
                     s3Url, 
                     mediatype, 

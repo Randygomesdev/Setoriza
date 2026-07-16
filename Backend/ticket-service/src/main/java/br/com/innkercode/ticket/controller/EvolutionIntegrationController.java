@@ -16,6 +16,8 @@ import java.util.Map;
 public class EvolutionIntegrationController {
 
     private final EvolutionClient evolutionClient;
+    private final br.com.innkercode.ticket.domain.repository.WhatsAppConfigRepository whatsAppConfigRepository;
+    private static final java.util.UUID GLOBAL_CONFIG_ID = java.util.UUID.fromString("00000000-0000-0000-0000-000000000000");
 
     @Value("${setoriza.base-url:http://localhost:8080}")
     private String setorizaBaseUrl;
@@ -91,5 +93,93 @@ public class EvolutionIntegrationController {
             serverUrl = "http://localhost:8080";
         }
         return ResponseEntity.ok(evolutionClient.registerWebhook(serverUrl));
+    }
+
+    @GetMapping("/config")
+    public ResponseEntity<br.com.innkercode.ticket.domain.entity.WhatsAppConfig> getConfig(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+            return ResponseEntity.status(403).build();
+        }
+        br.com.innkercode.ticket.domain.entity.WhatsAppConfig config = whatsAppConfigRepository.findById(GLOBAL_CONFIG_ID)
+                .orElseGet(() -> br.com.innkercode.ticket.domain.entity.WhatsAppConfig.builder()
+                        .id(GLOBAL_CONFIG_ID)
+                        .apiType(br.com.innkercode.ticket.domain.model.WhatsAppApiType.EVOLUTION)
+                        .build());
+        return ResponseEntity.ok(config);
+    }
+
+    @PutMapping("/config")
+    public ResponseEntity<br.com.innkercode.ticket.domain.entity.WhatsAppConfig> updateConfig(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole,
+            @RequestBody br.com.innkercode.ticket.domain.entity.WhatsAppConfig newConfig
+    ) {
+        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+            return ResponseEntity.status(403).build();
+        }
+        br.com.innkercode.ticket.domain.entity.WhatsAppConfig config = whatsAppConfigRepository.findById(GLOBAL_CONFIG_ID)
+                .orElseGet(() -> br.com.innkercode.ticket.domain.entity.WhatsAppConfig.builder()
+                        .id(GLOBAL_CONFIG_ID)
+                        .build());
+        
+        config.setApiType(newConfig.getApiType());
+        config.setMetaPhoneNumberId(newConfig.getMetaPhoneNumberId());
+        config.setMetaAccessToken(newConfig.getMetaAccessToken());
+        config.setMetaWabaId(newConfig.getMetaWabaId());
+        config.setMetaVerifyToken(newConfig.getMetaVerifyToken());
+
+        return ResponseEntity.ok(whatsAppConfigRepository.save(config));
+    }
+
+    @PostMapping("/test-meta")
+    public ResponseEntity<java.util.Map<String, Object>> testMetaConnection(
+            @RequestHeader(value = "X-User-Role", required = false) String userRole
+    ) {
+        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+            return ResponseEntity.status(403).build();
+        }
+        
+        br.com.innkercode.ticket.domain.entity.WhatsAppConfig config = whatsAppConfigRepository.findById(GLOBAL_CONFIG_ID)
+                .orElse(null);
+                
+        if (config == null || config.getMetaPhoneNumberId() == null || config.getMetaAccessToken() == null ||
+            config.getMetaPhoneNumberId().isBlank() || config.getMetaAccessToken().isBlank()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                    "success", false,
+                    "message", "Credenciais da Meta não configuradas no banco de dados."
+            ));
+        }
+
+        try {
+            org.springframework.web.client.RestClient testClient = org.springframework.web.client.RestClient.builder()
+                    .baseUrl("https://graph.facebook.com/v19.0")
+                    .build();
+
+            java.util.Map<?, ?> response = testClient.get()
+                    .uri("/{phoneNumberId}", config.getMetaPhoneNumberId())
+                    .header("Authorization", "Bearer " + config.getMetaAccessToken())
+                    .retrieve()
+                    .body(java.util.Map.class);
+
+            if (response != null && response.containsKey("id")) {
+                return ResponseEntity.ok(java.util.Map.of(
+                        "success", true,
+                        "message", "Conexão validada com sucesso!",
+                        "details", response
+                ));
+            } else {
+                return ResponseEntity.ok(java.util.Map.of(
+                        "success", false,
+                        "message", "A Meta respondeu, mas não retornou os dados esperados do telefone."
+                ));
+            }
+        } catch (Exception e) {
+            log.error("Erro ao testar conexão com a Meta API", e);
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", false,
+                    "message", "Falha de autenticação com a Meta API: " + e.getMessage()
+            ));
+        }
     }
 }
