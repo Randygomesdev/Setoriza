@@ -234,7 +234,7 @@ export const Chat: React.FC = () => {
             </div>
 
             {/* Smart Filters Panel */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 shadow-sm">
               {/* Filter Client Query */}
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -340,8 +340,8 @@ export const Chat: React.FC = () => {
               </div>
             </div>
 
-            {/* History Table */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            {/* History Table (Desktop only) */}
+            <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-sm hidden md:block">
               {historyLoading ? (
                 <div className="flex flex-col items-center justify-center p-20 text-slate-400 dark:text-slate-500 text-xs gap-3">
                   <div className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
@@ -355,7 +355,7 @@ export const Chat: React.FC = () => {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-950/40 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 select-none whitespace-nowrap">
+                      <tr className="bg-slate-50/50 dark:bg-slate-950/40 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 select-none whitespace-nowrap">
                         <th className="px-6 py-4">ID Curto</th>
                         <th className="px-6 py-4">Cliente</th>
                         <th className="px-6 py-4">Contato</th>
@@ -395,7 +395,7 @@ export const Chat: React.FC = () => {
                             </td>
                             <td className="px-6 py-4 font-normal text-slate-800 dark:text-slate-200 whitespace-nowrap">{formatPhoneNumber(t.whatsappNumber)}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-slate-200 dark:border-slate-700">
+                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 px-2 py-0.5 rounded-full text-[10px] font-semibold border border-slate-200 dark:border-slate-700">
                                 {t.sector ? t.sector.friendlyName : 'S/ Setor'}
                               </span>
                             </td>
@@ -460,9 +460,114 @@ export const Chat: React.FC = () => {
               )}
             </div>
 
+            {/* History Cards (Mobile only) */}
+            <div className="block md:hidden space-y-4">
+              {historyLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-slate-400 dark:text-slate-500 text-xs bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl gap-3">
+                  <div className="h-6 w-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Pesquisando histórico...</span>
+                </div>
+              ) : historyTickets.length === 0 ? (
+                <div className="p-12 text-center text-slate-455 dark:text-slate-500 text-xs italic bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl">
+                  Nenhum chamado encontrado com os filtros selecionados.
+                </div>
+              ) : (
+                historyTickets.map((t) => {
+                  const shortId = t.id.substring(0, 8).toUpperCase();
+                  const isClosed = t.status === 'CONCLUIDO';
+                  const agentName = t.assignedAgentId 
+                    ? (usersList.find((u) => u.id === t.assignedAgentId)?.name || 'Carregando...') 
+                    : 'Fila';
+
+                  return (
+                    <div 
+                      key={t.id}
+                      className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-3.5"
+                    >
+                      {/* Header: ID, Client, Status */}
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500">#{shortId}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate max-w-[180px] mt-0.5">
+                            {t.client?.companyName || 'Avulso/S. Cadastro'}
+                          </span>
+                        </div>
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${
+                          t.status === 'AGUARDANDO_ATENDIMENTO'
+                            ? 'bg-amber-50 text-amber-700 border-amber-250 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20'
+                            : t.status === 'TRIAGEM'
+                            ? 'bg-purple-50 text-purple-700 border-purple-250 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20'
+                            : t.status === 'EM_ANDAMENTO'
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-550/10 dark:text-blue-400 dark:border-blue-500/20'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20'
+                        }`}>
+                          {t.status === 'AGUARDANDO_ATENDIMENTO' 
+                            ? 'Aguardando' 
+                            : t.status === 'TRIAGEM' 
+                            ? 'Triagem' 
+                            : t.status === 'EM_ANDAMENTO'
+                            ? 'Em andamento'
+                            : 'Concluído'}
+                        </span>
+                      </div>
+
+                      {/* Details: Contact, Phone, Sector, Agent, Date */}
+                      <div className="space-y-2 pt-2.5 border-t border-slate-100 dark:border-slate-800/60 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Contato:</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-350">{t.clientName || 'Desconhecido'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">WhatsApp:</span>
+                          <span className="font-mono font-semibold text-slate-750 dark:text-slate-300">{formatPhoneNumber(t.whatsappNumber)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Setor:</span>
+                          <span className="text-[9px] font-bold bg-slate-100 dark:bg-slate-800 dark:text-slate-200 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                            {t.sector ? t.sector.friendlyName : 'S/ Setor'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Atendente:</span>
+                          <span className="font-semibold text-slate-750 dark:text-slate-300">{agentName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Abertura:</span>
+                          <span className="text-slate-400 dark:text-slate-500">{new Date(t.createdAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      {/* Action button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewMode('chat');
+                          if (isClosed) {
+                            setActiveTab('concluidos');
+                          } else {
+                            if (t.assignedAgentId === user?.id) {
+                              setActiveTab('meus');
+                            } else {
+                              setActiveTab('aguardando');
+                            }
+                          }
+                          selectTicket(t.id);
+                          setIsViewingFromHistory(true);
+                        }}
+                        className="w-full mt-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <MessageSquare size={13} />
+                        Ver Conversa
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
             {/* Pagination Controls */}
             {historyPages > 1 && (
-              <div className="flex justify-between items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm select-none">
+              <div className="flex justify-between items-center bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-sm select-none">
                 <span className="text-xs text-slate-500 dark:text-slate-400">
                   Mostrando página <strong className="text-slate-800 dark:text-slate-100">{historyPage + 1}</strong> de <strong className="text-slate-800 dark:text-slate-100">{historyPages}</strong> ({historyTotal} registros)
                 </span>
