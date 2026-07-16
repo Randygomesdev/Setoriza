@@ -143,7 +143,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
           placeholder="Pesquisar por nome, e-mail ou setor..."
           value={searchUser}
           onChange={(e) => setSearchUser(e.target.value)}
-          className="w-full md:w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+          className="w-full md:w-80 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
         />
       </div>
 
@@ -152,7 +152,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
         {filteredUsers.map((usr) => (
           <div 
             key={usr.id} 
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4"
+            className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4"
           >
             {/* Top section: Avatar, Access, and Name */}
             <div className="space-y-3">
