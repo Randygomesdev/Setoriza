@@ -263,7 +263,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
               <button
                 onClick={() => loadHistoryTickets(historyPage + 1)}
                 disabled={historyPage >= historyPages - 1 || historyLoading}
-                className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-955 disabled:opacity-45 disabled:cursor-not-allowed text-slate-600 dark:text-slate-350 transition-colors"
+                className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950 disabled:opacity-45 disabled:cursor-not-allowed text-slate-600 dark:text-slate-350 transition-colors"
                 title="Próxima Página"
               >
                 <ChevronRight size={16} />
@@ -368,7 +368,7 @@ export const AdminHistory: React.FC<AdminHistoryProps> = ({
               <button
                 onClick={() => loadHistoryTickets(historyPage + 1)}
                 disabled={historyPage >= historyPages - 1 || historyLoading}
-                className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-955 disabled:opacity-45 text-slate-650 dark:text-slate-350"
+                className="p-2 border border-slate-200 dark:border-slate-800 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-950 disabled:opacity-45 text-slate-650 dark:text-slate-350"
               >
                 <ChevronRight size={14} />
               </button>

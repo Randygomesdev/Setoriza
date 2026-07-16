@@ -493,7 +493,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
             <select
               value={activeConfig.apiType}
               onChange={(e) => setActiveConfig({ ...activeConfig, apiType: e.target.value })}
-              className="w-full bg-white dark:bg-slate-955 border border-slate-250 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none"
+              className="w-full bg-white dark:bg-slate-950 border border-slate-250 dark:border-slate-850 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none"
             >
               <option value="EVOLUTION">Evolution API (QR Code)</option>
               <option value="META">API Oficial da Meta (Cloud API)</option>
