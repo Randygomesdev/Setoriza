@@ -151,6 +151,9 @@ graph TD
 - [x] **9.2 Decomposição do Admin.tsx:** Segmentar a visualização monolítica em subcomponentes reutilizáveis (`AdminDashboard`, `AdminUsers`, `AdminClients`, `AdminIntegrations`, `AdminSectors`, `AdminHistory`).
 - [x] **9.3 Responsividade Mobile Completa:** Implementar sidebar colapsável com controle hambúrguer, overlay e grids flexíveis de cards com paginação isolada no mobile.
 - [x] **9.4 Otimização de Performance:** Refinar seletores e imports para evitar re-renderizações indesejadas e garantir compilação stricta sem warnings.
+- [x] **9.5 Histórico de Transferências (Linha do Tempo):** Implementação de gavetas (accordions) colapsáveis na barra lateral e renderização dinâmica da linha do tempo das transferências do ticket.
+- [x] **9.6 Validação de Reabertura Limitada (Janela de 24h):** Restringir a reabertura manual de chamados concluídos a uma janela máxima de 24 horas, bloqueando a ação no backend e desabilitando o botão correspondente no frontend.
+- [x] **9.7 Logs de Sistema na Transferência:** Disparar e registrar mensagens automáticas internas de sistema (`SISTEMA`) no chat detalhando transferências de setores e atendentes para contexto dos operadores.
 
 ---
 
