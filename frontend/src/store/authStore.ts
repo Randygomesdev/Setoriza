@@ -38,8 +38,28 @@ export const useAuthStore = create<AuthState>((set) => {
   const storedToken = localStorage.getItem('setoriza_token');
   const storedUser = localStorage.getItem('setoriza_user');
 
+  let initialToken: string | null = storedToken;
   let initialUser: UserSession | null = null;
-  if (storedUser) {
+  let isExpired = false;
+
+  if (storedToken) {
+    const claims = parseJwt(storedToken);
+    if (claims && claims.exp) {
+      const expirationDate = new Date(claims.exp * 1000);
+      if (expirationDate.getTime() < Date.now()) {
+        isExpired = true;
+      }
+    } else {
+      isExpired = true;
+    }
+  }
+
+  if (isExpired) {
+    localStorage.removeItem('setoriza_token');
+    localStorage.removeItem('setoriza_user');
+    initialToken = null;
+    initialUser = null;
+  } else if (storedUser) {
     try {
       initialUser = JSON.parse(storedUser);
     } catch (e) {
@@ -48,9 +68,9 @@ export const useAuthStore = create<AuthState>((set) => {
   }
 
   return {
-    token: storedToken,
+    token: initialToken,
     user: initialUser,
-    isAuthenticated: !!storedToken && !!initialUser,
+    isAuthenticated: !!initialToken && !!initialUser,
     login: (token, userDetails) => {
       // Decode JWT to extract sectors claim
       const claims = parseJwt(token);
