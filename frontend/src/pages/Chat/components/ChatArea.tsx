@@ -545,6 +545,30 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         className={`max-w-xs md:max-w-md h-9 rounded-lg ${isMe ? 'filter invert hue-rotate-180 brightness-150' : ''}`}
                       />
                     </div>
+                  ) : msg.messageType === 'DOCUMENTO' && msg.content.toLowerCase().includes('gif_playback') ? (
+                    <div className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 shadow-inner">
+                      <video
+                        src={msg.content}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="max-h-60 object-cover w-full rounded-lg"
+                      />
+                    </div>
+                  ) : msg.messageType === 'DOCUMENTO' && (
+                    msg.content.toLowerCase().endsWith('.mp4') ||
+                    msg.content.toLowerCase().endsWith('.webm') ||
+                    msg.content.toLowerCase().endsWith('.mov') ||
+                    msg.content.toLowerCase().endsWith('.avi')
+                  ) ? (
+                    <div className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 shadow-inner">
+                      <video
+                        src={msg.content}
+                        controls
+                        className="max-h-60 object-contain w-full rounded-lg"
+                      />
+                    </div>
                   ) : msg.messageType === 'DOCUMENTO' ? (
                     <a 
                       href={msg.content} 

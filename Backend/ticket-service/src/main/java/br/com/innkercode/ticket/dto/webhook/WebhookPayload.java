@@ -43,6 +43,7 @@ public class WebhookPayload {
         private Map<String, Object> audioMessage;
         private Map<String, Object> videoMessage;
         private Map<String, Object> documentMessage;
+        private Map<String, Object> stickerMessage;
         private ReactionMessage reactionMessage;
         private ProtocolMessage protocolMessage;
     }

@@ -353,6 +353,9 @@ public class ChatbotService {
         }
 
         // 5. Capturas de mídias e legendas como fallback descritivo
+        if (msg.getStickerMessage() != null) {
+            return "[Figurinha]";
+        }
         if (msg.getImageMessage() != null) {
             String caption = (String) msg.getImageMessage().get("caption");
             return (caption != null && !caption.isBlank()) ? caption : "[Imagem]";
@@ -374,7 +377,7 @@ public class ChatbotService {
 
     private MessageType determineMessageType(WebhookPayload.WebhookMessage msg) {
         if (msg == null) return MessageType.TEXTO;
-        if (msg.getImageMessage() != null) return MessageType.IMAGEM;
+        if (msg.getImageMessage() != null || msg.getStickerMessage() != null) return MessageType.IMAGEM;
         if (msg.getAudioMessage() != null || msg.getVideoMessage() != null || msg.getDocumentMessage() != null) {
             return MessageType.DOCUMENTO;
         }
@@ -393,6 +396,8 @@ public class ChatbotService {
             media = msg.getVideoMessage();
         } else if (msg.getDocumentMessage() != null) {
             media = msg.getDocumentMessage();
+        } else if (msg.getStickerMessage() != null) {
+            media = msg.getStickerMessage();
         }
 
         if (media == null) {
@@ -422,6 +427,17 @@ public class ChatbotService {
                 String processedFilename = ImageCompressor.getNewFilename(originalFilename);
                 String processedContentType = ImageCompressor.getNewContentType(contentType);
 
+                // Detecta se o vídeo é um GIF animado
+                boolean isGif = false;
+                if (msg.getVideoMessage() != null) {
+                    Object gifVal = media.get("gifPlayback");
+                    if (gifVal instanceof Boolean && (Boolean) gifVal) {
+                        isGif = true;
+                    } else if (gifVal instanceof String && "true".equalsIgnoreCase((String) gifVal)) {
+                        isGif = true;
+                    }
+                }
+
                 if (processedFilename == null) {
                     String extension = "";
                     if (processedContentType.contains("audio/ogg") || processedContentType.contains("audio/opus") || processedContentType.contains("ogg")) {
@@ -436,10 +452,13 @@ public class ChatbotService {
                         extension = ".jpg";
                     } else if (processedContentType.contains("image/png")) {
                         extension = ".png";
+                    } else if (processedContentType.contains("image/webp") || processedContentType.contains("webp")) {
+                        extension = ".webp";
                     } else if (processedContentType.contains("application/pdf")) {
                         extension = ".pdf";
                     }
-                    processedFilename = "media_" + UUID.randomUUID() + extension;
+                    String prefix = isGif ? "gif_playback_" : "media_";
+                    processedFilename = prefix + UUID.randomUUID() + extension;
                 }
 
                 return s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
