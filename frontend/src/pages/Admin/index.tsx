@@ -14,7 +14,8 @@ import {
   MessageSquare,
   LogOut,
   History,
-  Menu
+  Menu,
+  Brain
 } from 'lucide-react';
 
 // Subcomponents
@@ -24,13 +25,14 @@ import { AdminClients } from './components/AdminClients';
 import { AdminIntegrations } from './components/AdminIntegrations';
 import { AdminSectors } from './components/AdminSectors';
 import { AdminHistory } from './components/AdminHistory';
+import { AdminAI } from './components/AdminAI';
 
 export const Admin: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
 
-  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'users' | 'clients' | 'integrations' | 'sectors' | 'history'>('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'users' | 'clients' | 'integrations' | 'sectors' | 'history' | 'ai'>('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -256,6 +258,21 @@ export const Admin: React.FC = () => {
 
           <button
             onClick={() => {
+              setActiveSubTab('ai');
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full py-2 px-3 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-all border cursor-pointer ${
+              activeSubTab === 'ai'
+                ? 'bg-blue-600/10 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-500/30 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 border-transparent'
+            }`}
+          >
+            <Brain size={15} />
+            Inteligência Artificial
+          </button>
+
+          <button
+            onClick={() => {
               setActiveSubTab('history');
               setIsMobileMenuOpen(false);
             }}
@@ -323,6 +340,10 @@ export const Admin: React.FC = () => {
             <AdminIntegrations
               setError={setError}
             />
+          )}
+
+          {activeSubTab === 'ai' && (
+            <AdminAI />
           )}
 
           {activeSubTab === 'sectors' && (

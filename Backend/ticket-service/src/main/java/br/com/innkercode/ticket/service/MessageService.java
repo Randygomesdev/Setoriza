@@ -171,4 +171,9 @@ public class MessageService {
         }
         return null;
     }
+
+    @Transactional(readOnly = true)
+    public boolean hasSystemMessage(UUID ticketId) {
+        return messageRepository.existsByTicketIdAndSenderType(ticketId, SenderType.SISTEMA);
+    }
 }

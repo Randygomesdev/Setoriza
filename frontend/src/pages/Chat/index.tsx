@@ -6,6 +6,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useToast } from '../../context/ToastContext';
 import { connectWebSocket, disconnectWebSocket } from '../../services/websocket';
 import { api } from '../../services/api';
+import { requestNotificationPermission } from '../../services/notification';
 import { ImagePreviewModal } from './components/ImagePreviewModal';
 import { ChatSidebar } from './components/ChatSidebar';
 import { ChatArea } from './components/ChatArea';
@@ -91,6 +92,7 @@ export const Chat: React.FC = () => {
     // Initial fetch
     fetchTickets();
     fetchSectors();
+    requestNotificationPermission();
 
     const loadUsers = async () => {
       try {

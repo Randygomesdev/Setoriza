@@ -339,4 +339,21 @@ export const api = {
       });
     },
   },
+
+  ai: {
+    getConfig: async () => {
+      return request<any>('/ai/config');
+    },
+    updateConfig: async (config: any) => {
+      return request<any>('/ai/config', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      });
+    },
+    testConnection: async () => {
+      return request<string>('/ai/config/test', {
+        method: 'POST',
+      });
+    },
+  },
 };
