@@ -14,10 +14,11 @@ graph TD
     Phase5[Fase 5: Dashboard Frontend] -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
     Phase6 -->|Concluído| Phase9[Fase 9: Refatoração & Mobile]
     Phase9 -->|Concluído| Phase10[Fase 10: Toasts & Alertas Custom]
-    Phase10 -->|Concluído| Phase7[Fase 7: Produção & DevOps]
+    Phase10 -->|Concluído| Phase13[Fase 13: Chatbot Inteligente IA]
+    Phase13 -->|Concluído| Phase14[Fase 14: Notificações em Tempo Real]
+    Phase14 -->|Concluído| Phase7[Fase 7: Produção & DevOps]
     Phase7 -->|A seguir| Phase11[Fase 11: API Híbrida Meta]
     Phase11 -->|Planejado| Phase12[Fase 12: Suporte a Grupos]
-    Phase12 -->|Planejado| Phase13[Fase 13: Chatbot Inteligente IA]
 ```
 
 ---
@@ -188,9 +189,21 @@ graph TD
 
 ---
 
-### 🧠 Fase 13: Chatbot Inteligente com IA (Planejado)
+### 🧠 Fase 13: Chatbot Inteligente com IA (Concluído)
 *Objetivo: Integrar grandes modelos de linguagem (LLMs) para responder dúvidas frequentes e refinar a triagem automática.*
 
-- [ ] **13.1 Cliente de Integração com LLM:** Desenvolver integração com a API da OpenAI (GPT), Anthropic (Claude) ou Google (Gemini) no `ticket-service`.
-- [ ] **13.2 Base de Conhecimento e Prompting:** Estruturar sistema de contexto/RAG para o robô responder com precisão baseando-se em documentos da empresa.
-- [ ] **13.3 Classificação Inteligente de Setor:** Utilizar IA para interpretar a solicitação inicial em linguagem natural do cliente e direcioná-lo automaticamente ao setor correto.
+- [x] **13.1 Cliente de Integração com LLM:** Desenvolver integração com a API da OpenAI (GPT), Anthropic (Claude) ou Google (Gemini) no `ticket-service` (usando Gemini 3.5-flash).
+- [x] **13.2 Base de Conhecimento e Prompting:** Estruturar prompt de sistema alimentado por setores ativos no banco de dados para a IA classificar.
+- [x] **13.3 Classificação Inteligente de Setor:** Utilizar IA para interpretar a solicitação inicial em linguagem natural do cliente e direcioná-lo automaticamente ao setor correto, atualizando o status para `AGUARDANDO_ATENDIMENTO`.
+- [x] **13.4 Tratamento e Validação de JSON robusto:** Implementar parser robusto no backend para recuperar a resposta estruturada em JSON da LLM e suportar thinking tokens através de limites maiores (2048 tokens).
+
+---
+
+### 🔔 Fase 14: Sistema de Notificações em Tempo Real (Concluído)
+*Objetivo: Notificar operadores visual e sonoramente sobre novos chamados ou mensagens em background/segundo plano.*
+
+- [x] **14.1 Notificações Nativas do Navegador (Desktop API):** Exibir banners nativos do SO ao receber novas mensagens de clientes se a aba estiver em background/minimizada, permitindo focar e abrir o chat no clique.
+- [x] **14.2 Sintetizador de Áudio Customizado (Web Audio API):** Reproduzir alertas sonoros premium gerados por síntese de áudio do próprio navegador, evitando carregamento lento de arquivos de mídia externos.
+- [x] **14.3 Título Dinâmico Piscante (Tab Flashing):** Fazer piscar o título da aba do navegador indicando novas mensagens recebidas de clientes até que a aba receba foco.
+- [x] **14.4 Badges de Mensagens Não Lidas:** Adicionar badges dinâmicos de contagem de mensagens não lidas na aba "Ativos" da sidebar e nos cartões de conversas individuais de clientes.
+- [x] **14.5 Botão de Silenciamento Persistente:** Incluir botão de controle de volume no perfil do atendente para mutar/desmutar alertas de áudio, salvando a preferência no `localStorage`.

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../services/api';
+import { playNotificationSound, showDesktopNotification, startTitleFlash } from '../services/notification';
 
 export interface Sector {
   id: string;
@@ -50,10 +51,13 @@ interface ChatState {
   sectors: Sector[];
   activeTicketId: string | null;
   messagesByTicketId: Record<string, Message[]>;
+  unreadCounts: Record<string, number>;
+  audioMuted: boolean;
   loading: boolean;
   error: string | null;
   wsConnected: boolean;
   setWsConnected: (connected: boolean) => void;
+  toggleAudioMute: () => void;
   
   fetchTickets: () => Promise<void>;
   fetchSectors: () => Promise<void>;
@@ -65,17 +69,28 @@ interface ChatState {
   sendOperatorMediaMessage: (ticketId: string, file: File, caption?: string) => Promise<void>;
   createTicket: (whatsappNumber: string, clientName: string, sectorId: string) => Promise<any>;
   handleWebSocketEvent: (event: TicketEvent) => void;
+  markAsRead: (ticketId: string) => void;
 }
 
-export const useChatStore = create<ChatState>((set) => ({
+export const useChatStore = create<ChatState>((set, get) => ({
   tickets: [],
   sectors: [],
   activeTicketId: null,
   messagesByTicketId: {},
+  unreadCounts: {},
+  audioMuted: localStorage.getItem('setoriza_audio_muted') === 'true',
   loading: false,
   error: null,
   wsConnected: false,
   setWsConnected: (connected) => set({ wsConnected: connected }),
+  
+  toggleAudioMute: () => {
+    set((state) => {
+      const newMuted = !state.audioMuted;
+      localStorage.setItem('setoriza_audio_muted', String(newMuted));
+      return { audioMuted: newMuted };
+    });
+  },
 
   fetchTickets: async () => {
     set({ loading: true, error: null });
@@ -103,6 +118,9 @@ export const useChatStore = create<ChatState>((set) => ({
     set({ activeTicketId: ticketId });
     if (!ticketId) return;
     
+    // Zera mensagens não lidas ao selecionar
+    get().markAsRead(ticketId);
+    
     // Fetch messages for the ticket if not already loaded, or to refresh
     try {
       const messages = await api.tickets.getMessages(ticketId);
@@ -125,6 +143,15 @@ export const useChatStore = create<ChatState>((set) => ({
     } catch (err: any) {
       console.error(`Error fetching messages for ticket ${ticketId}:`, err);
     }
+  },
+
+  markAsRead: (ticketId: string) => {
+    set((state) => ({
+      unreadCounts: {
+        ...state.unreadCounts,
+        [ticketId]: 0,
+      },
+    }));
   },
 
   claimTicket: async (ticketId: string) => {
@@ -244,12 +271,28 @@ export const useChatStore = create<ChatState>((set) => ({
     switch (type) {
       case 'TICKET_CREATED': {
         const newTicket: Ticket = payload;
+        let isNew = false;
         set((state) => {
           if (state.tickets.some((t) => t.id === newTicket.id)) {
             return state;
           }
+          isNew = true;
           return { tickets: [newTicket, ...state.tickets] };
         });
+
+        if (isNew) {
+          if (!get().audioMuted) {
+            playNotificationSound();
+          }
+          startTitleFlash('Novo ticket na fila!');
+          showDesktopNotification(
+            'Novo Ticket na Fila',
+            `O cliente ${newTicket.clientName || newTicket.whatsappNumber} iniciou um contato.`,
+            () => {
+              get().selectTicket(newTicket.id);
+            }
+          );
+        }
         break;
       }
       
@@ -283,10 +326,11 @@ export const useChatStore = create<ChatState>((set) => ({
           status: payload.status,
         };
         
+        let isDuplicate = false;
         set((state) => {
           const ticketMessages = state.messagesByTicketId[ticketId] || [];
           if (ticketMessages.some((m) => m.id === newMessage.id)) {
-            // Se já existir, atualiza suas propriedades (ex: whatsappMsgId que acabou de ser gerado)
+            isDuplicate = true;
             return {
               messagesByTicketId: {
                 ...state.messagesByTicketId,
@@ -301,6 +345,40 @@ export const useChatStore = create<ChatState>((set) => ({
             },
           };
         });
+
+        // Notifica apenas se for uma nova mensagem recebida do CLIENTE
+        if (type === 'MESSAGE_RECEIVED' && !isDuplicate && newMessage.senderType === 'CLIENTE') {
+          if (!get().audioMuted) {
+            playNotificationSound();
+          }
+          
+          const activeTicketId = get().activeTicketId;
+          const isCurrentActive = activeTicketId === ticketId;
+          const isFocused = document.visibilityState === 'visible' && document.hasFocus();
+
+          // Se não estiver visualizando essa conversa ativamente ou o navegador estiver em background/outra aba
+          if (!isCurrentActive || !isFocused) {
+            // Incrementa o contador de não lidas
+            set((state) => ({
+              unreadCounts: {
+                ...state.unreadCounts,
+                [ticketId]: (state.unreadCounts[ticketId] || 0) + 1,
+              },
+            }));
+
+            const ticket = get().tickets.find((t) => t.id === ticketId);
+            const clientName = ticket ? (ticket.clientName || ticket.whatsappNumber) : 'Cliente';
+            
+            startTitleFlash(`Nova mensagem de ${clientName}`);
+            showDesktopNotification(
+              `Nova mensagem de ${clientName}`,
+              newMessage.content,
+              () => {
+                get().selectTicket(ticketId);
+              }
+            );
+          }
+        }
         break;
       }
 

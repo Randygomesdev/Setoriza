@@ -4,6 +4,7 @@ import br.com.innkercode.ticket.domain.entity.Client;
 import br.com.innkercode.ticket.domain.entity.ClientContact;
 import br.com.innkercode.ticket.domain.entity.Sector;
 import br.com.innkercode.ticket.domain.entity.Ticket;
+import br.com.innkercode.ticket.domain.entity.AiConfig;
 import br.com.innkercode.ticket.domain.model.MessageType;
 import br.com.innkercode.ticket.domain.model.SenderType;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
@@ -11,6 +12,7 @@ import br.com.innkercode.ticket.domain.repository.ClientContactRepository;
 import br.com.innkercode.ticket.domain.repository.ClientRepository;
 import br.com.innkercode.ticket.domain.repository.SectorRepository;
 import br.com.innkercode.ticket.dto.webhook.WebhookPayload;
+import br.com.innkercode.ticket.client.GeminiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +24,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +41,10 @@ public class ChatbotService {
     private final ClientRepository clientRepository;
     private final ClientContactRepository clientContactRepository;
     private final SectorRepository sectorRepository;
+    private final AiConfigService aiConfigService;
+    private final GeminiClient geminiClient;
+
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
     @Value("${whatsapp.evolution.apikey}")
     private String apiKey;
@@ -185,18 +194,30 @@ public class ChatbotService {
             Ticket ticket = ticketService.createTriageTicket(contact.getWhatsappNumber(), clientName, contact.getClient().getId());
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
 
-            sendTriageMenu(ticket, contact.getClient().getCompanyName());
+            // Agenda a triagem automática para dali a 12 segundos (debounce e simulação humana)
+            scheduleInitialTriage(ticket.getId());
         } else {
             Ticket ticket = activeTicketOpt.get();
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
 
             if (ticket.getStatus() == TicketStatus.TRIAGEM) {
                 if (messageType == MessageType.TEXTO) {
-                    handleTriageInput(ticket, content);
+                    // Só processamos a resposta se a primeira mensagem de sistema (menu ou confirmação da IA) já tiver sido enviada
+                    if (messageService.hasSystemMessage(ticket.getId())) {
+                        handleTriageInput(ticket, content);
+                    } else {
+                        log.info("Mensagem acumulada na janela de debounce de triagem para o ticket {}", ticket.getId());
+                    }
                 } else {
-                    String botMsg = "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.";
-                    messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
-                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
+                    if (messageService.hasSystemMessage(ticket.getId())) {
+                        String botMsg = "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.";
+                        messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
+                        whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
+                    }
+                }
+            } else if (ticket.getStatus() == TicketStatus.AGUARDANDO_ATENDIMENTO) {
+                if (messageType == MessageType.TEXTO) {
+                    handleAwaitingTriageChatbot(ticket, content);
                 }
             } else {
                 log.info("Ticket {} ativo em status {}, mensagem recebida.", ticket.getId(), ticket.getStatus());
@@ -232,8 +253,12 @@ public class ChatbotService {
             // 2. Promover ticket para TRIAGEM e associar cliente
             ticketService.promoteToTriage(ticket.getId(), client.getId());
 
-            // 3. Enviar mensagem de sucesso e menu de triagem
-            sendTriageMenu(ticket, client.getCompanyName());
+            // 3. Enviar mensagem de sucesso e agendar a triagem com delay
+            String successMsg = String.format("A empresa *%s* foi identificada com sucesso e vinculada ao seu contato.", client.getCompanyName());
+            messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, successMsg);
+            whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), successMsg);
+
+            scheduleInitialTriage(ticket.getId());
         } else {
             log.warn("CNPJ {} não cadastrado no sistema.", cleanCnpj);
             String errorMsg = "⚠️ Desculpe, não localizei nenhuma empresa cadastrada com o CNPJ informado.\n\n" +
@@ -571,6 +596,183 @@ public class ChatbotService {
             }
         } catch (Exception e) {
             log.error("Erro ao processar webhook da Meta API", e);
+        }
+    }
+
+    private void scheduleInitialTriage(UUID ticketId) {
+        log.info("Agendando triagem inicial da IA para o ticket {} em 12 segundos...", ticketId);
+        scheduler.schedule(() -> {
+            try {
+                runInitialTriage(ticketId);
+            } catch (Exception e) {
+                log.error("Erro na triagem inicial agendada para o ticket {}", ticketId, e);
+            }
+        }, 12, TimeUnit.SECONDS);
+    }
+
+    public void runInitialTriage(UUID ticketId) {
+        log.info("Iniciando execução da triagem agendada para o ticket {}", ticketId);
+        
+        Ticket ticket = ticketService.getTicketById(ticketId);
+        if (ticket == null) {
+            log.warn("Ticket {} não encontrado para execução da triagem.", ticketId);
+            return;
+        }
+        
+        if (ticket.getStatus() != TicketStatus.TRIAGEM) {
+            log.info("Ticket {} não está mais em status de TRIAGEM. Ignorando triagem.", ticketId);
+            return;
+        }
+
+        // Verifica se o sistema já enviou alguma mensagem (para evitar duplicidade ou interceptar triagem manual)
+        if (messageService.hasSystemMessage(ticketId)) {
+            log.info("Menu ou mensagem de sistema já enviada para o ticket {}. Cancelando triagem agendada.", ticketId);
+            return;
+        }
+
+        List<Sector> activeSectors = sectorRepository.findByActiveTrue();
+        if (activeSectors.isEmpty()) {
+            log.warn("Nenhum setor ativo configurado no banco. Enviando mensagem de fallback.");
+            String companyName = (ticket.getClient() != null) ? ticket.getClient().getCompanyName() : ticket.getClientName();
+            sendTriageMenu(ticket, companyName);
+            return;
+        }
+
+        try {
+            AiConfig aiConfig = aiConfigService.getConfig();
+            if (aiConfig.isAiEnabled() && aiConfig.isAutoTriageEnabled() 
+                    && aiConfig.getGeminiApiKey() != null && !aiConfig.getGeminiApiKey().isBlank()) {
+                
+                // 1. Carregar o histórico de mensagens deste ticket enviadas pelo cliente
+                List<br.com.innkercode.ticket.domain.entity.Message> clientMessages = messageService.getMessagesByTicketId(ticketId).stream()
+                        .filter(m -> m.getSenderType() == SenderType.CLIENTE)
+                        .toList();
+
+                StringBuilder sbText = new StringBuilder();
+                for (br.com.innkercode.ticket.domain.entity.Message m : clientMessages) {
+                    if (m.getContent() != null && !m.getContent().isBlank() && m.getMessageType() == MessageType.TEXTO) {
+                        if (sbText.length() > 0) {
+                            sbText.append(". ");
+                        }
+                        sbText.append(m.getContent());
+                    }
+                }
+
+                String concatenatedInput = sbText.toString().trim();
+                if (!concatenatedInput.isEmpty()) {
+                    log.info("Texto acumulado do cliente para triagem da IA: '{}'", concatenatedInput);
+
+                    // 2. Montar o prompt de sistema dinâmico
+                    StringBuilder promptBuilder = new StringBuilder();
+                    promptBuilder.append("Você é o assistente de triagem do sistema Setoriza. Seu papel é analisar a mensagem de um cliente e classificá-la no setor correto.\n");
+                    promptBuilder.append("Os setores ativos no momento são:\n");
+                    for (Sector s : activeSectors) {
+                        promptBuilder.append("- ").append(s.getName()).append(": ").append(s.getFriendlyName()).append("\n");
+                    }
+                    promptBuilder.append("\nInstruções:\n");
+                    promptBuilder.append("1. Identifique qual setor é o mais adequado. Retorne no campo 'setor' o nome técnico exato (ex: ");
+                    if (!activeSectors.isEmpty()) {
+                        promptBuilder.append(activeSectors.get(0).getName());
+                    }
+                    promptBuilder.append(").\n");
+                    promptBuilder.append("2. Se a mensagem for vaga (saudações como 'olá', 'bom dia', 'oi') ou não puder ser classificada com alta certeza em um dos setores listados, retorne null no campo 'setor'.\n");
+                    promptBuilder.append("3. Retorne a resposta estritamente no formato JSON abaixo:\n");
+                    promptBuilder.append("{\n  \"setor\": \"NOME_TECNICO_OU_NULL\",\n  \"justificativa\": \"breve explicação em português\"\n}");
+
+                    // 3. Chamar a API do Gemini
+                    String geminiJson = geminiClient.generateContentWithCustomSystem(concatenatedInput, promptBuilder.toString(), "application/json");
+                    log.info("Gemini respondeu na classificação: {}", geminiJson);
+
+                    if (geminiJson != null && !geminiJson.isBlank()) {
+                        String cleanJson = geminiJson.trim();
+                        if (!cleanJson.startsWith("{")) {
+                            int startIdx = cleanJson.indexOf("{");
+                            int endIdx = cleanJson.lastIndexOf("}");
+                            if (startIdx != -1 && endIdx != -1 && endIdx > startIdx) {
+                                cleanJson = cleanJson.substring(startIdx, endIdx + 1);
+                            }
+                        }
+
+                        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        com.fasterxml.jackson.databind.JsonNode node = mapper.readTree(cleanJson);
+                        if (node.has("setor") && !node.get("setor").isNull()) {
+                            String targetSector = node.get("setor").asText().trim();
+                            if (!"null".equalsIgnoreCase(targetSector) && !targetSector.isEmpty()) {
+                                Optional<Sector> matchedSectorOpt = activeSectors.stream()
+                                        .filter(s -> s.getName().equalsIgnoreCase(targetSector))
+                                        .findFirst();
+
+                                if (matchedSectorOpt.isPresent()) {
+                                    Sector matchedSector = matchedSectorOpt.get();
+                                    log.info("Triagem IA direcionou o ticket {} para o setor {}", ticketId, matchedSector.getFriendlyName());
+                                    
+                                    ticketService.updateSector(ticketId, matchedSector);
+
+                                    String confirmationMessage = String.format(
+                                            "Entendi! Encaminhei o seu contato para o setor de *%s*. Aguarde que logo um atendente irá falar com você.",
+                                            matchedSector.getFriendlyName()
+                                    );
+                                    messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, confirmationMessage);
+                                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), confirmationMessage);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("Falha ao executar classificação inteligente com a IA: {}", e.getMessage(), e);
+        }
+
+        // 4. Fallback caso a IA não esteja ativa, dê erro, ou retorne null (não conseguiu classificar)
+        log.info("IA de triagem desativada ou ineficaz para o ticket {}. Enviando menu de triagem padrão.", ticketId);
+        String companyName = (ticket.getClient() != null) ? ticket.getClient().getCompanyName() : ticket.getClientName();
+        sendTriageMenu(ticket, companyName);
+    }
+
+    private void handleAwaitingTriageChatbot(Ticket ticket, String content) {
+        try {
+            AiConfig config = aiConfigService.getConfig();
+            if (config.isAiEnabled() && config.isChatbotEnabled() 
+                    && config.getGeminiApiKey() != null && !config.getGeminiApiKey().isBlank()) {
+                
+                log.info("Processando mensagem do cliente via Chatbot IA no ticket {} (status AGUARDANDO_ATENDIMENTO)", ticket.getId());
+                
+                // Carregar histórico de mensagens
+                List<br.com.innkercode.ticket.domain.entity.Message> history = messageService.getMessagesByTicketId(ticket.getId());
+                StringBuilder contextBuilder = new StringBuilder();
+                contextBuilder.append("Histórico recente da conversa com o cliente:\n");
+                
+                int start = Math.max(0, history.size() - 8);
+                for (int i = start; i < history.size(); i++) {
+                    br.com.innkercode.ticket.domain.entity.Message m = history.get(i);
+                    String label = m.getSenderType() == SenderType.CLIENTE ? "Cliente" : "Atendente Virtual";
+                    if (m.getContent() != null && !m.getContent().isBlank() && m.getMessageType() == MessageType.TEXTO) {
+                        contextBuilder.append(label).append(": ").append(m.getContent()).append("\n");
+                    }
+                }
+                
+                contextBuilder.append("Cliente (nova mensagem): ").append(content).append("\n");
+                contextBuilder.append("Atendente Virtual: ");
+                
+                String reply = geminiClient.generateContent(contextBuilder.toString());
+                if (reply != null && !reply.isBlank()) {
+                    log.info("Chatbot IA respondeu para o ticket {}: '{}'", ticket.getId(), reply);
+                    
+                    // Simular um atraso de resposta humano para naturalidade (ex: 2.5 segundos)
+                    try {
+                        Thread.sleep(2500);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                    }
+
+                    messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, reply);
+                    whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), reply);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Erro no processamento do Chatbot IA no ticket {}: {}", ticket.getId(), e.getMessage(), e);
         }
     }
 }
