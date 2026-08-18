@@ -15,7 +15,7 @@ import {
 import { api } from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
 
-export const AdminAI: React.FC = () => {
+export const MasterAI: React.FC = () => {
   const { addToast } = useToast();
   
   const [config, setConfig] = useState({
@@ -289,7 +289,7 @@ export const AdminAI: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-xs text-slate-800 dark:text-slate-100 uppercase tracking-wide">Chatbot Autônomo</h3>
-                    <p className="text-[10px] text-slate-450 dark:text-slate-500 mt-0.5">Respostas automáticas na fila de espera.</p>
+                    <p className="text-[10px] text-slate-455 dark:text-slate-500 mt-0.5">Respostas automáticas na fila de espera.</p>
                   </div>
                 </div>
 

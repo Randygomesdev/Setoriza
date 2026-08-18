@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Login } from './pages/Login';
 import { Chat } from './pages/Chat';
 import { Admin } from './pages/Admin';
+import { Master } from './pages/Master';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LandingPage } from './pages/LandingPage';
 import { ToastProvider } from './context/ToastContext';
@@ -28,6 +29,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['MASTER', 'ADMIN']}>
                   <Admin />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/master"
+              element={
+                <ProtectedRoute allowedRoles={['MASTER']}>
+                  <Master />
                 </ProtectedRoute>
               }
             />

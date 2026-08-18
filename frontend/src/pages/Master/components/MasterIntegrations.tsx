@@ -4,11 +4,11 @@ import { api } from '../../../services/api';
 import { useToast } from '../../../context/ToastContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 
-interface AdminIntegrationsProps {
+interface MasterIntegrationsProps {
   setError: (err: string | null) => void;
 }
 
-export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
+export const MasterIntegrations: React.FC<MasterIntegrationsProps> = ({
   setError
 }) => {
   const { addToast } = useToast();
@@ -248,7 +248,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
             <div className="space-y-6">
               {metaStatus === 'UNCONFIGURED' && (
                 <div className="p-4 bg-amber-50 dark:bg-amber-955/20 border border-amber-250 dark:border-amber-900/40 rounded-2xl flex items-start gap-3">
-                  <AlertTriangle className="text-amber-500 shrink-0 mt-0.5" size={20} />
+                  <AlertTriangle className="text-amber-505 shrink-0 mt-0.5" size={20} />
                   <div>
                     <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Aguardando Configuração da Meta API</h4>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -261,7 +261,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
               {metaStatus === 'CONFIGURED' && (
                 <div className="space-y-4">
                   <div className="p-4 bg-blue-50 dark:bg-blue-955/20 border border-blue-200 dark:border-blue-900/45 rounded-2xl flex items-start gap-3">
-                    <AlertTriangle className="text-blue-500 shrink-0 mt-0.5" size={20} />
+                    <AlertTriangle className="text-blue-555 shrink-0 mt-0.5" size={20} />
                     <div>
                       <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Meta API Configurada (Aguardando Teste)</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -309,7 +309,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
                   <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/40 rounded-2xl flex items-start gap-3">
                     <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
                     <div>
-                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Falha de Autenticação na Meta API</h4>
+                      <h4 className="font-bold text-sm text-slate-850 dark:text-slate-200">Falha de Autenticação na Meta API</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Não foi possível estabelecer contato com a Meta usando as credenciais informadas. Verifique o Access Token e o Phone Number ID e tente novamente.
                       </p>
@@ -398,7 +398,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
                     <div>
                       <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Aparelho Desconectado</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        A instância existe, mas o WhatsApp não está pareado. Você precisa escanear o QR Code abaixo com o aplicativo do WhatsApp no celular de atendimento.
+                        La instância existe, mas o WhatsApp não está pareado. Você precisa escanear o QR Code abaixo com o aplicativo do WhatsApp no celular de atendimento.
                       </p>
                     </div>
                   </div>
@@ -439,7 +439,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
               {evoStatus === 'OFFLINE' && (
                 <div className="space-y-4">
                   <div className="p-4 bg-red-50 dark:bg-red-955/20 border border-red-200 dark:border-red-900/40 rounded-2xl flex items-start gap-3">
-                    <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
+                    <AlertTriangle className="text-red-505 shrink-0 mt-0.5" size={20} />
                     <div>
                       <h4 className="font-bold text-sm text-slate-800 dark:text-slate-200">Robô Indisponível / Instância Inexistente</h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -483,7 +483,7 @@ export const AdminIntegrations: React.FC<AdminIntegrationsProps> = ({
                 <h4 className="font-semibold text-xs text-slate-800 dark:text-slate-200">
                   {evoStatus === 'OFFLINE' ? 'API Inalcançável' : 'Conector Online'}
                 </h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">API: {evoConfig.baseUrl}</p>
+                <p className="text-[10px] text-slate-505 mt-0.5">API: {evoConfig.baseUrl}</p>
               </div>
             </div>
           )}
