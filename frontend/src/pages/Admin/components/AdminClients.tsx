@@ -41,7 +41,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
     setClientSuccessMsg('');
     setError(null);
     try {
-      const cleanCnpj = newClient.cnpj.replace(/\D/g, '');
+      const cleanCnpj = newClient.cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       const created = await api.clients.create({
         companyName: newClient.companyName,
         tradeName: newClient.tradeName,
@@ -83,7 +83,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
     setError(null);
     if (!editingClient) return;
     try {
-      const cleanCnpj = editingClient.cnpj.replace(/\D/g, '');
+      const cleanCnpj = editingClient.cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       await api.clients.update(editingClient.id, {
         companyName: editingClient.companyName,
         tradeName: editingClient.tradeName,

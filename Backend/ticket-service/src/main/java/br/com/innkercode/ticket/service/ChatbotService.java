@@ -11,6 +11,7 @@ import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.domain.repository.ClientContactRepository;
 import br.com.innkercode.ticket.domain.repository.ClientRepository;
 import br.com.innkercode.ticket.domain.repository.SectorRepository;
+import br.com.innkercode.ticket.domain.repository.TicketRepository;
 import br.com.innkercode.ticket.dto.webhook.WebhookPayload;
 import br.com.innkercode.ticket.client.GeminiClient;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,7 @@ public class ChatbotService {
     private final MessageService messageService;
     private final WhatsAppGatewayService whatsAppGatewayService;
     private final S3Service s3Service;
+    private final TicketRepository ticketRepository;
     
     private final ClientRepository clientRepository;
     private final ClientContactRepository clientContactRepository;
@@ -147,15 +149,17 @@ public class ChatbotService {
         String clientName = payload.getData().getPushName();
         String messageId = payload.getData().getKey().getId();
 
-        Optional<ClientContact> contactOpt = clientContactRepository.findByWhatsappNumber(senderNumber);
+        List<ClientContact> contacts = clientContactRepository.findAllByWhatsappNumber(senderNumber);
 
-        if (contactOpt.isEmpty()) {
+        if (contacts.isEmpty()) {
             // Caso não tenha vínculo cadastrado
             handleUnknownContact(senderNumber, clientName, messageType, content, messageId);
+        } else if (contacts.size() == 1) {
+            // Caso tenha apenas um vínculo cadastrado
+            handleKnownContact(contacts.get(0), messageType, content, clientName, messageId);
         } else {
-            // Caso já tenha vínculo cadastrado
-            ClientContact contact = contactOpt.get();
-            handleKnownContact(contact, messageType, content, clientName, messageId);
+            // Caso pertença a múltiplas empresas
+            handleMultiContact(contacts, messageType, content, clientName, messageId);
         }
     }
 
@@ -176,7 +180,7 @@ public class ChatbotService {
                 if (messageType == MessageType.TEXTO) {
                     handleCnpjInput(ticket, content, clientName);
                 } else {
-                    String botMsg = "Por favor, informe o CNPJ da sua empresa (somente números) em formato de texto para podermos identificar seu cadastro.";
+                    String botMsg = "Por favor, informe o CNPJ da sua empresa em formato de texto para podermos identificar seu cadastro.";
                     messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
                     whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
                 }
@@ -227,14 +231,14 @@ public class ChatbotService {
 
     private void sendCnpjRequest(Ticket ticket) {
         String msg = "Olá! Não identifiquei o seu número em nosso cadastro de atendimentos.\n\n" +
-                     "Por favor, digite o *CNPJ da sua empresa* (somente números) para que eu possa localizar o seu cadastro:";
+                     "Por favor, digite o *CNPJ da sua empresa* para que eu possa localizar o seu cadastro:";
         messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, msg);
         whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), msg);
     }
 
     private void handleCnpjInput(Ticket ticket, String input, String pushName) {
-        String cleanCnpj = input.replaceAll("\\D", ""); // Apenas números
-        log.info("Processando tentativa de identificação por CNPJ: '{}' para o ticket {}", cleanCnpj, ticket.getId());
+        String cleanCnpj = input.replaceAll("[\\s./-]", "").toUpperCase(); // Remove formatação e aceita letras
+        log.info("Processando tentativa de identificação por CNPJ alfanumérico: '{}' para o ticket {}", cleanCnpj, ticket.getId());
 
         Optional<Client> clientOpt = clientRepository.findByCnpj(cleanCnpj);
 
@@ -262,7 +266,7 @@ public class ChatbotService {
         } else {
             log.warn("CNPJ {} não cadastrado no sistema.", cleanCnpj);
             String errorMsg = "⚠️ Desculpe, não localizei nenhuma empresa cadastrada com o CNPJ informado.\n\n" +
-                              "Por favor, verifique o número e digite novamente (somente números), ou entre em contato com nosso suporte administrativo para atualizar o cadastro.";
+                              "Por favor, verifique o código informado e digite novamente, ou entre em contato com nosso suporte administrativo para atualizar o cadastro.";
             messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, errorMsg);
             whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
         }
@@ -583,13 +587,14 @@ public class ChatbotService {
                         }
 
                         // Verificar se o número de WhatsApp pertence a algum contato já cadastrado
-                        Optional<ClientContact> contactOpt = clientContactRepository.findByWhatsappNumber(sender);
+                        List<ClientContact> contacts = clientContactRepository.findAllByWhatsappNumber(sender);
 
-                        if (contactOpt.isEmpty()) {
+                        if (contacts.isEmpty()) {
                             handleUnknownContact(sender, pushName, messageType, content, messageId);
+                        } else if (contacts.size() == 1) {
+                            handleKnownContact(contacts.get(0), messageType, content, pushName, messageId);
                         } else {
-                            ClientContact contact = contactOpt.get();
-                            handleKnownContact(contact, messageType, content, pushName, messageId);
+                            handleMultiContact(contacts, messageType, content, pushName, messageId);
                         }
                     }
                 }
@@ -773,6 +778,75 @@ public class ChatbotService {
             }
         } catch (Exception e) {
             log.error("Erro no processamento do Chatbot IA no ticket {}: {}", ticket.getId(), e.getMessage(), e);
+        }
+    }
+
+    private void handleMultiContact(List<ClientContact> contacts, MessageType messageType, String content, String pushName, String messageId) {
+        String sender = contacts.get(0).getWhatsappNumber();
+        Optional<Ticket> activeTicketOpt = ticketService.getActiveTicketByWhatsappNumber(sender);
+
+        if (activeTicketOpt.isPresent()) {
+            Ticket ticket = activeTicketOpt.get();
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
+
+            if (ticket.getStatus() == TicketStatus.TRIAGEM) {
+                if (messageType == MessageType.TEXTO && messageService.hasSystemMessage(ticket.getId())) {
+                    handleTriageInput(ticket, content);
+                }
+            } else if (ticket.getStatus() == TicketStatus.IDENTIFICACAO_NOME) {
+                if (messageType == MessageType.TEXTO) {
+                    handleCompanySelectionInput(ticket, content, contacts);
+                }
+            } else if (ticket.getStatus() == TicketStatus.AGUARDANDO_ATENDIMENTO) {
+                if (messageType == MessageType.TEXTO) {
+                    handleAwaitingTriageChatbot(ticket, content);
+                }
+            }
+        } else {
+            Ticket ticket = ticketService.createIdentificationTicket(sender, pushName);
+            ticket.setStatus(TicketStatus.IDENTIFICACAO_NOME);
+            ticketRepository.save(ticket);
+
+            messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
+            sendCompanySelectionMenu(ticket, contacts);
+        }
+    }
+
+    private void sendCompanySelectionMenu(Ticket ticket, List<ClientContact> contacts) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Olá! Identifiquei que seu número está vinculado a mais de uma empresa em nosso cadastro.\n\n");
+        sb.append("Por favor, digite o número correspondente à empresa que você deseja atendimento hoje:\n");
+        for (int i = 0; i < contacts.size(); i++) {
+            sb.append(i + 1).append(" - ").append(contacts.get(i).getClient().getTradeName()).append("\n");
+        }
+        String msg = sb.toString();
+        messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, msg);
+        whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), msg);
+    }
+
+    private void handleCompanySelectionInput(Ticket ticket, String input, List<ClientContact> contacts) {
+        String cleanInput = input.trim();
+        int option = -1;
+        try {
+            option = Integer.parseInt(cleanInput) - 1;
+        } catch (NumberFormatException e) {
+            // Ignorado
+        }
+
+        if (option >= 0 && option < contacts.size()) {
+            ClientContact selectedContact = contacts.get(option);
+            Client client = selectedContact.getClient();
+
+            ticket.setClientId(client.getId());
+            ticket.setClientName(selectedContact.getContactName());
+            ticket.setStatus(TicketStatus.TRIAGEM);
+            ticketRepository.save(ticket);
+
+            sendTriageMenu(ticket, client.getTradeName());
+        } else {
+            String errorMsg = "⚠️ Opção inválida. Por favor, digite apenas o número correspondente a uma das empresas listadas.";
+            messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, errorMsg);
+            whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), errorMsg);
         }
     }
 }

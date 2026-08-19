@@ -10,182 +10,19 @@ import {
   Brain,
   ShieldAlert,
   UploadCloud,
-  Activity,
-  Database,
-  Server,
-  Download
+  Activity
 } from 'lucide-react';
 
 // Subcomponents
 import { MasterIntegrations } from './components/MasterIntegrations';
 import { MasterAI } from './components/MasterAI';
-
-// Future onboarding loader component placeholder
-const MasterOnboarding: React.FC = () => {
-  const downloadExcelTemplate = () => {
-    const html = `
-      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-      <head><meta charset="utf-8"/></head>
-      <body>
-        <table border="1">
-          <tr style="background-color: #3b82f6; color: #ffffff; font-weight: bold;">
-            <th>CNPJ</th>
-            <th>Razão Social</th>
-            <th>Nome Fantasia</th>
-            <th>Nome do Responsável</th>
-            <th>Contato do Responsável</th>
-          </tr>
-          <tr>
-            <td>12345678000190</td>
-            <td>Empresa de Exemplo LTDA</td>
-            <td>Exemplo Co</td>
-            <td>Randy Gomes</td>
-            <td>5527998349791</td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    `;
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'modelo_onboarding_setoriza.xls');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      <div>
-        <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100 flex items-center gap-2">
-          <UploadCloud size={22} className="text-blue-500" />
-          Carga de Dados & Onboarding de Clientes
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Importe a listagem de clientes ativos dos escritórios de contabilidade diretamente para o sistema.
-        </p>
-      </div>
-
-      <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 space-y-6">
-        
-        {/* Download Template Card */}
-        <div className="p-5 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-blue-900 dark:text-blue-200">Planilha de Modelo Padrão (Excel)</h3>
-            <p className="text-xs text-blue-700/85 dark:text-blue-400/80">
-              Faça o download do arquivo modelo pre-formatado, preencha com as informações dos clientes e envie ao lado.
-            </p>
-          </div>
-          <button
-            onClick={downloadExcelTemplate}
-            className="py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
-          >
-            <Download size={14} />
-            Baixar Modelo Excel
-          </button>
-        </div>
-
-        {/* Upload Zone */}
-        <div className="border-2 border-dashed border-slate-200 dark:border-slate-850 rounded-2xl p-10 flex flex-col items-center justify-center space-y-4 hover:border-blue-500 transition-colors cursor-pointer">
-          <div className="p-4 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-2xl">
-            <UploadCloud size={32} />
-          </div>
-          <div className="text-center space-y-1">
-            <p className="text-xs font-bold text-slate-850 dark:text-slate-200">Arraste seu arquivo Excel preenchido ou clique para navegar</p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500">Tamanho máximo do arquivo: 5MB</p>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-// Future system health dashboard placeholder
-const MasterStatus: React.FC = () => {
-  return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      <div>
-        <h2 className="text-xl font-bold text-slate-850 dark:text-slate-100 flex items-center gap-2">
-          <Activity size={22} className="text-blue-500" />
-          Status do Sistema & Integridade de Dados
-        </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Monitore o estado de funcionamento dos microsserviços, cache e armazenamento do ecossistema Setoriza.
-        </p>
-      </div>
-
-      {/* Grid de Serviços */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Microsserviços</span>
-            <Server size={16} className="text-blue-500" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-350">Gateway Service</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">ONLINE</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-350">Auth Service</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">ONLINE</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-350">Ticket Service</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">ONLINE</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Bancos & Cache</span>
-            <Database size={16} className="text-blue-500" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-355">Postgres DB (auth_db)</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">INTEGRO</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-355">Postgres DB (ticket_db)</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">INTEGRO</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-355">Redis Cache</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">ATIVO</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl p-5 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Storage</span>
-            <UploadCloud size={16} className="text-blue-500" />
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-350">MinIO Storage</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">CONECTADO</span>
-            </div>
-            <div className="flex justify-between items-center text-xs">
-              <span className="text-slate-600 dark:text-slate-350">Bucket (setoriza-medias)</span>
-              <span className="text-[9px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 rounded">INTEGRO</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+import { MasterOnboarding } from './components/MasterOnboarding';
+import { MasterStatus } from './components/MasterStatus';
 
 export const Master: React.FC = () => {
   const { user, logout, isDarkMode, toggleTheme } = useAuthStore();
 
-  const [activeSubTab, setActiveSubTab] = useState<'integrations' | 'ai' | 'onboarding' | 'status'>('integrations');
+  const [activeSubTab, setActiveSubTab] = useState<'integrations' | 'ai' | 'onboarding' | 'status'>('status');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

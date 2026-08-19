@@ -125,9 +125,9 @@ public class ClientController {
         log.info("Adicionando contato de WhatsApp {} para o cliente ID: {}. Solicitante role: {}", 
                 contact.getWhatsappNumber(), clientId, userRole);
 
-        // Check if phone number already exists
-        if (clientContactRepository.existsByWhatsappNumber(contact.getWhatsappNumber())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este número de WhatsApp já está cadastrado para outro cliente ou contato.");
+        // Check if phone number already exists for this client
+        if (clientContactRepository.existsByClientIdAndWhatsappNumber(clientId, contact.getWhatsappNumber())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este número de WhatsApp já está cadastrado para este cliente.");
         }
 
         Client client = clientRepository.findById(clientId)
