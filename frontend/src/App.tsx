@@ -28,7 +28,7 @@ function App() {
               <Route
                 path="/chat"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['ADMIN', 'USER']}>
                     <Chat />
                   </ProtectedRoute>
                 }
@@ -36,7 +36,7 @@ function App() {
               <Route
                 path="/admin"
                 element={
-                  <ProtectedRoute allowedRoles={['MASTER', 'ADMIN']}>
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
                     <Admin />
                   </ProtectedRoute>
                 }

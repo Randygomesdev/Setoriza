@@ -229,7 +229,8 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
 HISTÓRICO DE ATENDIMENTO - SETORIZA
 Ticket ID: ${activeTicket.id}
 Cliente: ${activeTicket.clientName || 'Contato em Identificação'}
-Empresa: ${activeTicket.client ? activeTicket.client.companyName : 'Não Identificado'}
+Empresa (Fantasia): ${activeTicket.client ? (activeTicket.client.tradeName || activeTicket.client.companyName) : 'Não Identificado'}
+Razão Social: ${activeTicket.client && activeTicket.client.tradeName ? activeTicket.client.companyName : 'Não Identificado'}
 CNPJ: ${activeTicket.client ? formatCNPJ(activeTicket.client.cnpj) : 'Aguardando'}
 Setor: ${activeTicket.sector ? activeTicket.sector.friendlyName : 'Sem Setor'}
 Exportado em: ${new Date().toLocaleString('pt-BR')}
@@ -341,11 +342,19 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
             </span>
           </div>
           <div className="flex justify-between text-[10px] items-start">
-            <span className="text-slate-500">Cliente (Empresa):</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300 text-right truncate w-32" title={activeTicket.client?.companyName || 'Não Identificado'}>
-              {activeTicket.client ? activeTicket.client.companyName : 'Não Identificado'}
+            <span className="text-slate-500">Nome Fantasia:</span>
+            <span className="font-semibold text-slate-700 dark:text-slate-300 text-right truncate w-32" title={activeTicket.client?.tradeName || 'Não Identificado'}>
+              {activeTicket.client ? (activeTicket.client.tradeName || activeTicket.client.companyName) : 'Não Identificado'}
             </span>
           </div>
+          {activeTicket.client?.tradeName && (
+            <div className="flex justify-between text-[10px] items-start">
+              <span className="text-slate-500">Razão Social:</span>
+              <span className="text-slate-600 dark:text-slate-400 text-right truncate w-32" title={activeTicket.client.companyName}>
+                {activeTicket.client.companyName}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between text-[10px] items-center">
             <span className="text-slate-500">CNPJ:</span>
             <span className="font-mono text-slate-700 dark:text-slate-300">

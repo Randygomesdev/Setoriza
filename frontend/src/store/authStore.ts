@@ -13,8 +13,10 @@ interface AuthState {
   token: string | null;
   user: UserSession | null;
   isAuthenticated: boolean;
+  isDarkMode: boolean;
   login: (token: string, user: Omit<UserSession, 'sectors'>) => void;
   logout: () => void;
+  toggleTheme: () => void;
 }
 
 function parseJwt(token: string) {
@@ -37,6 +39,22 @@ function parseJwt(token: string) {
 export const useAuthStore = create<AuthState>((set) => {
   const storedUser = localStorage.getItem('setoriza_user');
 
+  const getInitialTheme = () => {
+    const saved = localStorage.getItem('setoriza_theme');
+    if (saved) {
+      return saved === 'dark';
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+
+  const initialDark = getInitialTheme();
+  // Apply immediately on file load to avoid flash
+  if (initialDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+
   let initialToken: string | null = null;
   let initialUser: UserSession | null = null;
 
@@ -52,6 +70,7 @@ export const useAuthStore = create<AuthState>((set) => {
     token: initialToken,
     user: initialUser,
     isAuthenticated: !!initialUser,
+    isDarkMode: initialDark,
     login: (token, userDetails) => {
       // Decode JWT to extract sectors claim
       const claims = parseJwt(token);
@@ -87,5 +106,16 @@ export const useAuthStore = create<AuthState>((set) => {
       localStorage.removeItem('setoriza_user');
       set({ token: null, user: null, isAuthenticated: false });
     },
+    toggleTheme: () => set((state) => {
+      const nextTheme = !state.isDarkMode;
+      localStorage.setItem('setoriza_theme', nextTheme ? 'dark' : 'light');
+      // Sync theme with document classList
+      if (nextTheme) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      return { isDarkMode: nextTheme };
+    }),
   };
 });

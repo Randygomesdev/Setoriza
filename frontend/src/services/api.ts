@@ -263,6 +263,7 @@ export const api = {
     },
     create: async (client: { 
       companyName: string; 
+      tradeName: string;
       cnpj: string;
       whatsappApiType?: string;
       metaPhoneNumberId?: string;
@@ -277,6 +278,7 @@ export const api = {
     },
     update: async (id: string, client: { 
       companyName: string; 
+      tradeName: string;
       cnpj: string;
       whatsappApiType?: string;
       metaPhoneNumberId?: string;

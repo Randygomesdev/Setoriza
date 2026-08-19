@@ -49,7 +49,8 @@ public class ClientController {
                         c.getId(),
                         c.getContactName(),
                         c.getWhatsappNumber(),
-                        c.getClient() != null ? c.getClient().getCompanyName() : "Avulso"
+                        c.getClient() != null ? c.getClient().getCompanyName() : "Avulso",
+                        c.getClient() != null ? c.getClient().getTradeName() : "Avulso"
                 ))
                 .toList();
         return ResponseEntity.ok(response);
@@ -82,6 +83,7 @@ public class ClientController {
                 .orElseThrow(() -> new IllegalArgumentException("Cliente não encontrado"));
         client.setCnpj(clientDetails.getCnpj());
         client.setCompanyName(clientDetails.getCompanyName());
+        client.setTradeName(clientDetails.getTradeName());
         return ResponseEntity.ok(clientRepository.save(client));
     }
 

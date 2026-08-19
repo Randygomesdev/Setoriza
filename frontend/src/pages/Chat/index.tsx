@@ -26,7 +26,7 @@ export const Chat: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useToast();
-  const { user, token, isAuthenticated } = useAuthStore();
+  const { user, token, isAuthenticated, isDarkMode, toggleTheme } = useAuthStore();
   const {
     tickets,
     sectors,
@@ -42,7 +42,6 @@ export const Chat: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'aguardando' | 'meus' | 'concluidos'>('meus');
   const [searchTerm, setSearchTerm] = useState('');
   const [showDetailsPanel, setShowDetailsPanel] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTicketPhone, setNewTicketPhone] = useState('');
@@ -67,15 +66,6 @@ export const Chat: React.FC = () => {
   const [histFilterEndDate, setHistFilterEndDate] = useState('');
   const [isViewingFromHistory, setIsViewingFromHistory] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
-
-  // Sync isDarkMode with document classList for Tailwind's darkMode: 'class' strategy
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
 
 
@@ -198,9 +188,7 @@ export const Chat: React.FC = () => {
 
 
 
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
+
 
 
 
@@ -390,7 +378,7 @@ export const Chat: React.FC = () => {
                               </button>
                             </td>
                             <td className="px-6 py-4 font-semibold text-slate-900 dark:text-slate-200 truncate max-w-[150px]">
-                              {t.client?.companyName || 'Avulso/S. Cadastro'}
+                              {t.client?.tradeName || t.client?.companyName || 'Avulso/S. Cadastro'}
                             </td>
                             <td className="px-6 py-4 font-normal text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
                               {t.clientName || 'Desconhecido'}
@@ -491,7 +479,7 @@ export const Chat: React.FC = () => {
                         <div className="flex flex-col">
                           <span className="font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500">#{shortId}</span>
                           <span className="font-bold text-slate-800 dark:text-slate-100 text-sm truncate max-w-[180px] mt-0.5">
-                            {t.client?.companyName || 'Avulso/S. Cadastro'}
+                            {t.client?.tradeName || t.client?.companyName || 'Avulso/S. Cadastro'}
                           </span>
                         </div>
                         <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase border ${
@@ -726,6 +714,7 @@ export const Chat: React.FC = () => {
                     {contactsList
                       .filter((c) =>
                         c.contactName.toLowerCase().includes(contactSearchInput.toLowerCase()) ||
+                        (c.tradeName && c.tradeName.toLowerCase().includes(contactSearchInput.toLowerCase())) ||
                         (c.companyName && c.companyName.toLowerCase().includes(contactSearchInput.toLowerCase()))
                       )
                       .slice(0, 5)
@@ -737,19 +726,20 @@ export const Chat: React.FC = () => {
                             e.stopPropagation();
                             setNewTicketPhone(c.whatsappNumber);
                             setNewTicketName(c.contactName);
-                            setContactSearchInput(`${c.contactName} (${c.companyName})`);
+                            setContactSearchInput(`${c.contactName} (${c.tradeName || c.companyName})`);
                             setShowSuggestions(false);
                           }}
                           className="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-850 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 last:border-b-0 flex flex-col cursor-pointer"
                         >
                           <span className="font-semibold">{c.contactName}</span>
                           <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                            Empresa: {c.companyName} | WhatsApp: {c.whatsappNumber}
+                            Empresa: {c.tradeName || c.companyName} | WhatsApp: {c.whatsappNumber}
                           </span>
                         </button>
                       ))}
                     {contactsList.filter((c) =>
                       c.contactName.toLowerCase().includes(contactSearchInput.toLowerCase()) ||
+                      (c.tradeName && c.tradeName.toLowerCase().includes(contactSearchInput.toLowerCase())) ||
                       (c.companyName && c.companyName.toLowerCase().includes(contactSearchInput.toLowerCase()))
                     ).length === 0 && (
                       <div className="px-3.5 py-3 text-xs text-slate-500 dark:text-slate-400 italic">

@@ -12,15 +12,21 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { login, isAuthenticated } = useAuthStore();
+  const { login, isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/chat', { replace: true });
+      if (user?.role === 'MASTER') {
+        navigate('/master', { replace: true });
+      } else if (user?.role === 'ADMIN') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/chat', { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,7 +53,11 @@ export const Login: React.FC = () => {
         pictureUrl: response.pictureUrl,
       });
       
-      navigate('/chat');
+      if (response.role === 'MASTER') {
+        navigate('/master');
+      } else {
+        navigate('/chat');
+      }
     } catch (err: any) {
       setError(err.message || 'Falha ao autenticar. Verifique suas credenciais.');
     } finally {

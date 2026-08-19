@@ -240,7 +240,7 @@ public class ChatbotService {
 
         if (clientOpt.isPresent()) {
             Client client = clientOpt.get();
-            log.info("Empresa cadastrada identificada: {} (ID: {})", client.getCompanyName(), client.getId());
+            log.info("Empresa cadastrada identificada: {} (ID: {})", client.getTradeName(), client.getId());
 
             // 1. Criar o vínculo do contato
             ClientContact newContact = ClientContact.builder()
@@ -254,7 +254,7 @@ public class ChatbotService {
             ticketService.promoteToTriage(ticket.getId(), client.getId());
 
             // 3. Enviar mensagem de sucesso e agendar a triagem com delay
-            String successMsg = String.format("A empresa *%s* foi identificada com sucesso e vinculada ao seu contato.", client.getCompanyName());
+            String successMsg = String.format("A empresa *%s* foi identificada com sucesso e vinculada ao seu contato.", client.getTradeName());
             messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, successMsg);
             whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), successMsg);
 
@@ -633,7 +633,7 @@ public class ChatbotService {
         List<Sector> activeSectors = sectorRepository.findByActiveTrue();
         if (activeSectors.isEmpty()) {
             log.warn("Nenhum setor ativo configurado no banco. Enviando mensagem de fallback.");
-            String companyName = (ticket.getClient() != null) ? ticket.getClient().getCompanyName() : ticket.getClientName();
+            String companyName = (ticket.getClient() != null) ? ticket.getClient().getTradeName() : ticket.getClientName();
             sendTriageMenu(ticket, companyName);
             return;
         }
@@ -727,7 +727,7 @@ public class ChatbotService {
 
         // 4. Fallback caso a IA não esteja ativa, dê erro, ou retorne null (não conseguiu classificar)
         log.info("IA de triagem desativada ou ineficaz para o ticket {}. Enviando menu de triagem padrão.", ticketId);
-        String companyName = (ticket.getClient() != null) ? ticket.getClient().getCompanyName() : ticket.getClientName();
+        String companyName = (ticket.getClient() != null) ? ticket.getClient().getTradeName() : ticket.getClientName();
         sendTriageMenu(ticket, companyName);
     }
 

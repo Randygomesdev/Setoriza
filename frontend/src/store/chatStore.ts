@@ -13,6 +13,7 @@ export interface Client {
   id: string;
   cnpj: string;
   companyName: string;
+  tradeName: string;
 }
 
 export interface Ticket {

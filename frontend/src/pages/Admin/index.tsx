@@ -26,10 +26,9 @@ import { AdminHistory } from './components/AdminHistory';
 export const Admin: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isDarkMode, toggleTheme } = useAuthStore();
 
   const [activeSubTab, setActiveSubTab] = useState<'dashboard' | 'users' | 'clients' | 'sectors' | 'history'>('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,19 +60,6 @@ export const Admin: React.FC = () => {
       setError(err.message || 'Falha ao buscar dados administrativos');
     }
   };
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
-  // Sync theme
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   // Handle incoming router state redirections
   useEffect(() => {

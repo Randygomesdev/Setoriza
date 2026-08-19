@@ -135,7 +135,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         const term = searchTerm.toLowerCase();
         const clientNameMatch = ticket.clientName && ticket.clientName.toLowerCase().includes(term);
         const phoneMatch = ticket.whatsappNumber && ticket.whatsappNumber.includes(term);
-        const companyNameMatch = ticket.client?.companyName && ticket.client.companyName.toLowerCase().includes(term);
+        const companyNameMatch = (ticket.client?.tradeName && ticket.client.tradeName.toLowerCase().includes(term)) ||
+                                 (ticket.client?.companyName && ticket.client.companyName.toLowerCase().includes(term));
         if (!clientNameMatch && !phoneMatch && !companyNameMatch) return false;
       }
 
@@ -183,7 +184,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
 
         <div className="flex gap-1">
-          {(user?.role === 'ADMIN' || user?.role === 'MASTER') && (
+          {user?.role === 'ADMIN' && (
             <Link
               to="/admin"
               className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
@@ -348,7 +349,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     {getChannelIcon(ticket.whatsappNumber)}
                     <span className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">
                       {ticket.clientName || 'Cliente em Triagem'}
-                      {ticket.client?.companyName ? ` (${ticket.client.companyName})` : ''}
+                      {ticket.client?.tradeName ? ` (${ticket.client.tradeName})` : ticket.client?.companyName ? ` (${ticket.client.companyName})` : ''}
                     </span>
                     {(unreadCounts[ticket.id] || 0) > 0 && (
                       <span className="bg-blue-500 text-white font-bold rounded-full text-[9px] px-1.5 py-0.5 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-800 animate-pulse">
