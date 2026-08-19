@@ -35,31 +35,12 @@ function parseJwt(token: string) {
 }
 
 export const useAuthStore = create<AuthState>((set) => {
-  const storedToken = localStorage.getItem('setoriza_token');
   const storedUser = localStorage.getItem('setoriza_user');
 
-  let initialToken: string | null = storedToken;
+  let initialToken: string | null = null;
   let initialUser: UserSession | null = null;
-  let isExpired = false;
 
-  if (storedToken) {
-    const claims = parseJwt(storedToken);
-    if (claims && claims.exp) {
-      const expirationDate = new Date(claims.exp * 1000);
-      if (expirationDate.getTime() < Date.now()) {
-        isExpired = true;
-      }
-    } else {
-      isExpired = true;
-    }
-  }
-
-  if (isExpired) {
-    localStorage.removeItem('setoriza_token');
-    localStorage.removeItem('setoriza_user');
-    initialToken = null;
-    initialUser = null;
-  } else if (storedUser) {
+  if (storedUser) {
     try {
       initialUser = JSON.parse(storedUser);
     } catch (e) {
@@ -70,7 +51,7 @@ export const useAuthStore = create<AuthState>((set) => {
   return {
     token: initialToken,
     user: initialUser,
-    isAuthenticated: !!initialToken && !!initialUser,
+    isAuthenticated: !!initialUser,
     login: (token, userDetails) => {
       // Decode JWT to extract sectors claim
       const claims = parseJwt(token);
@@ -91,12 +72,18 @@ export const useAuthStore = create<AuthState>((set) => {
         sectors: sectorsList,
       };
 
-      localStorage.setItem('setoriza_token', token);
       localStorage.setItem('setoriza_user', JSON.stringify(fullUser));
       set({ token, user: fullUser, isAuthenticated: true });
     },
     logout: () => {
-      localStorage.removeItem('setoriza_token');
+      // Invalida o cookie de sessão httpOnly no backend
+      fetch('http://localhost:8080/api/v1/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(err => {
+        console.error('Erro ao chamar logout no backend:', err);
+      });
+
       localStorage.removeItem('setoriza_user');
       set({ token: null, user: null, isAuthenticated: false });
     },

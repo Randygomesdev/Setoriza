@@ -15,6 +15,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
@@ -70,6 +71,11 @@ export const api = {
       return request<void>('/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({ token, newPassword }),
+      });
+    },
+    logout: async () => {
+      return request<void>('/auth/logout', {
+        method: 'POST',
       });
     },
   },

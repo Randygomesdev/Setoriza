@@ -26,7 +26,7 @@ export const Chat: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { addToast } = useToast();
-  const { user, token } = useAuthStore();
+  const { user, token, isAuthenticated } = useAuthStore();
   const {
     tickets,
     sectors,
@@ -81,13 +81,13 @@ export const Chat: React.FC = () => {
 
   // Initialize data and WebSocket connection
   useEffect(() => {
-    if (!token) {
+    if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
     // Connect WebSocket for live events
-    connectWebSocket(token);
+    connectWebSocket(token || '');
     
     // Initial fetch
     fetchTickets();
