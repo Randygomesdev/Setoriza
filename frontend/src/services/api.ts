@@ -19,7 +19,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && path !== '/auth/login') {
     // Session expired or invalid token
     useAuthStore.getState().logout();
     throw new Error('Sessão expirada. Por favor, faça login novamente.');
@@ -56,6 +56,7 @@ export const api = {
         email: string;
         role: 'MASTER' | 'ADMIN' | 'USER';
         pictureUrl?: string;
+        requirePasswordChange: boolean;
       }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
@@ -71,6 +72,12 @@ export const api = {
       return request<void>('/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({ token, newPassword }),
+      });
+    },
+    changePassword: async (currentPassword: string, newPassword: string) => {
+      return request<void>('/users/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
     },
     logout: async () => {
@@ -250,6 +257,11 @@ export const api = {
       return request<any>(`/users/${id}`, {
         method: 'PUT',
         body: JSON.stringify(user),
+      });
+    },
+    toggleActive: async (id: string) => {
+      return request<any>(`/users/${id}/toggle-active`, {
+        method: 'PUT',
       });
     },
   },

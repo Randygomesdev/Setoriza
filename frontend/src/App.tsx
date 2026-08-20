@@ -10,6 +10,8 @@ const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login }
 const Chat = lazy(() => import('./pages/Chat').then(m => ({ default: m.Chat })));
 const Admin = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const Master = lazy(() => import('./pages/Master').then(m => ({ default: m.Master })));
+const ChangePassword = lazy(() => import('./pages/ChangePassword').then(m => ({ default: m.ChangePassword })));
+const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 
 function App() {
   return (
@@ -25,6 +27,15 @@ function App() {
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route
+                path="/change-password"
+                element={
+                  <ProtectedRoute allowRequirePasswordChange={true}>
+                    <ChangePassword />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/chat"
                 element={

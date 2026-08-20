@@ -7,6 +7,7 @@ export interface UserSession {
   role: 'MASTER' | 'ADMIN' | 'USER';
   sectors: string[];
   pictureUrl?: string;
+  requirePasswordChange: boolean;
 }
 
 interface AuthState {
@@ -17,6 +18,7 @@ interface AuthState {
   login: (token: string, user: Omit<UserSession, 'sectors'>) => void;
   logout: () => void;
   toggleTheme: () => void;
+  setPasswordChanged: () => void;
 }
 
 function parseJwt(token: string) {
@@ -55,7 +57,7 @@ export const useAuthStore = create<AuthState>((set) => {
     document.documentElement.classList.remove('dark');
   }
 
-  let initialToken: string | null = null;
+  let initialToken = localStorage.getItem('setoriza_token') || null;
   let initialUser: UserSession | null = null;
 
   if (storedUser) {
@@ -89,9 +91,11 @@ export const useAuthStore = create<AuthState>((set) => {
         ...userDetails,
         role: (claims?.role || userDetails.role || 'USER') as any,
         sectors: sectorsList,
+        requirePasswordChange: userDetails.requirePasswordChange || false,
       };
 
       localStorage.setItem('setoriza_user', JSON.stringify(fullUser));
+      localStorage.setItem('setoriza_token', token);
       set({ token, user: fullUser, isAuthenticated: true });
     },
     logout: () => {
@@ -104,6 +108,7 @@ export const useAuthStore = create<AuthState>((set) => {
       });
 
       localStorage.removeItem('setoriza_user');
+      localStorage.removeItem('setoriza_token');
       set({ token: null, user: null, isAuthenticated: false });
     },
     toggleTheme: () => set((state) => {
@@ -116,6 +121,12 @@ export const useAuthStore = create<AuthState>((set) => {
         document.documentElement.classList.remove('dark');
       }
       return { isDarkMode: nextTheme };
+    }),
+    setPasswordChanged: () => set((state) => {
+      if (!state.user) return {};
+      const updatedUser = { ...state.user, requirePasswordChange: false };
+      localStorage.setItem('setoriza_user', JSON.stringify(updatedUser));
+      return { user: updatedUser };
     }),
   };
 });
