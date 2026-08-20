@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { api } from '../../services/api';
+import logo from '../../assets/logo.svg';
+import logoWhite from '../../assets/logoWhite.svg';
 import {
   Users,
   Briefcase,
@@ -88,9 +90,13 @@ export const Admin: React.FC = () => {
           >
             <Menu size={16} />
           </button>
-          <span className="text-sm font-bold bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent">
-            Setoriza Admin
-          </span>
+          <div className="flex items-center">
+            <img 
+              src={isDarkMode ? logoWhite : logo} 
+              alt="Setoriza Logo" 
+              className="h-5 w-auto object-contain" 
+            />
+          </div>
         </div>
         <div className="flex items-center gap-1.5">
           <button
@@ -102,7 +108,7 @@ export const Admin: React.FC = () => {
           </button>
           <button
             onClick={logout}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-450 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 dark:hover:text-rose-455 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             title="Sair da Conta"
           >
             <LogOut size={15} />
@@ -125,10 +131,12 @@ export const Admin: React.FC = () => {
         
         {/* Desktop Header */}
         <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md select-none md:flex hidden">
-          <div className="flex items-center gap-2">
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-emerald-500 bg-clip-text text-transparent">
-              Setoriza Admin
-            </span>
+          <div className="flex items-center">
+            <img 
+              src={isDarkMode ? logoWhite : logo} 
+              alt="Setoriza Logo" 
+              className="h-6 w-auto object-contain" 
+            />
           </div>
           <div className="flex items-center gap-1.5">
             <button
