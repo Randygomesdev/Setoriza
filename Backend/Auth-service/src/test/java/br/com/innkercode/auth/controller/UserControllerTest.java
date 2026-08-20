@@ -34,7 +34,7 @@ public class UserControllerTest {
     @Test
     void testCreateUser_AdminCannotCreateMaster() {
         User currentUser = User.builder().role(UserRole.ADMIN).build();
-        CreateUserRequest request = new CreateUserRequest("New Master", "master@test.com", "password", UserRole.MASTER, "FISCAL");
+        CreateUserRequest request = new CreateUserRequest("New Master", "master@test.com", UserRole.MASTER, "FISCAL");
 
         ResponseEntity<UserResponse> response = userController.createUser(request, currentUser);
 
@@ -45,8 +45,8 @@ public class UserControllerTest {
     @Test
     void testCreateUser_AdminCanCreateUser() {
         User currentUser = User.builder().role(UserRole.ADMIN).build();
-        CreateUserRequest request = new CreateUserRequest("New User", "user@test.com", "password", UserRole.USER, "FISCAL");
-        UserResponse mockResponse = new UserResponse(null, "New User", "user@test.com", null, "USER", "FISCAL");
+        CreateUserRequest request = new CreateUserRequest("New User", "user@test.com", UserRole.USER, "FISCAL");
+        UserResponse mockResponse = new UserResponse(null, "New User", "user@test.com", null, "USER", "FISCAL", null, true);
         
         when(authService.createUser(request)).thenReturn(mockResponse);
 
@@ -59,8 +59,8 @@ public class UserControllerTest {
     @Test
     void testCreateUser_MasterCanCreateMaster() {
         User currentUser = User.builder().role(UserRole.MASTER).build();
-        CreateUserRequest request = new CreateUserRequest("New Master", "master@test.com", "password", UserRole.MASTER, "FISCAL");
-        UserResponse mockResponse = new UserResponse(null, "New Master", "master@test.com", null, "MASTER", "FISCAL");
+        CreateUserRequest request = new CreateUserRequest("New Master", "master@test.com", UserRole.MASTER, "FISCAL");
+        UserResponse mockResponse = new UserResponse(null, "New Master", "master@test.com", null, "MASTER", "FISCAL", null, true);
         
         when(authService.createUser(request)).thenReturn(mockResponse);
 

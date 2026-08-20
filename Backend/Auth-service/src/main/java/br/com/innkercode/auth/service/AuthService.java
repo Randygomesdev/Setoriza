@@ -6,6 +6,7 @@ import br.com.innkercode.auth.domain.model.UserRole;
 import br.com.innkercode.auth.dto.request.AuthenticationRequest;
 import br.com.innkercode.auth.dto.request.RegisterRequest;
 import br.com.innkercode.auth.dto.request.CreateUserRequest;
+import br.com.innkercode.auth.dto.request.ChangePasswordRequest;
 import br.com.innkercode.auth.dto.response.AuthenticationResponse;
 import br.com.innkercode.auth.dto.response.UserResponse;
 import br.com.innkercode.auth.exception.AuthException;
@@ -35,7 +36,6 @@ public class AuthService {
     private final PasswordResetTokenRepository tokenRepository;
     private final EmailService emailService;
 
-
     public AuthenticationResponse register(RegisterRequest request) {
         log.info("Iniciando registro de usuário: {}", request.email());
 
@@ -49,6 +49,7 @@ public class AuthService {
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(UserRole.USER)
+                .requirePasswordChange(false)
                 .active(true)
                 .build();
         userRepository.save(user);
@@ -61,7 +62,8 @@ public class AuthService {
                 user.getName(),
                 user.getEmail(),
                 user.getRole().name(),
-                user.getPictureUrl()
+                user.getPictureUrl(),
+                user.isRequirePasswordChange()
         );
     }
 
@@ -73,16 +75,21 @@ public class AuthService {
             throw new AuthException("Este email já está cadastrado");
         }
 
+        String tempPassword = generateTemporaryPassword();
+
         User user = User.builder()
                 .name(request.name())
                 .email(request.email())
-                .password(passwordEncoder.encode(request.password()))
+                .password(passwordEncoder.encode(tempPassword))
                 .role(request.role())
                 .sectors(request.sectors())
+                .requirePasswordChange(true)
                 .active(true)
                 .build();
         User savedUser = userRepository.save(user);
         log.info("Usuário criado com sucesso administrativamente: {}", request.email());
+
+        emailService.sendNewUserTemporaryPasswordEmail(savedUser.getEmail(), savedUser.getName(), tempPassword);
 
         return new UserResponse(
                 savedUser.getId(),
@@ -90,7 +97,9 @@ public class AuthService {
                 savedUser.getEmail(),
                 savedUser.getPictureUrl(),
                 savedUser.getRole().name(),
-                savedUser.getSectors()
+                savedUser.getSectors(),
+                tempPassword,
+                savedUser.isActive()
         );
     }
 
@@ -124,7 +133,9 @@ public class AuthService {
                 updatedUser.getEmail(),
                 updatedUser.getPictureUrl(),
                 updatedUser.getRole().name(),
-                updatedUser.getSectors()
+                updatedUser.getSectors(),
+                null,
+                updatedUser.isActive()
         );
     }
 
@@ -150,8 +161,9 @@ public class AuthService {
                 user.getName(),
                 user.getEmail(),
                 user.getRole().name(),
-                user.getPictureUrl()
-                );
+                user.getPictureUrl(),
+                user.isRequirePasswordChange()
+        );
     }
 
     @Transactional
@@ -181,6 +193,7 @@ public class AuthService {
                 }
         );
     }
+
     @Transactional
     public void resetPassword(String token, String newPassword) {
         log.info("Tentativa de reset de senha com token recebido");
@@ -202,4 +215,28 @@ public class AuthService {
         log.info("Senha alterada com sucesso para o usuário: {}", user.getId());
     }
 
+    public void changePassword(User user, ChangePasswordRequest request) {
+        log.info("Tentativa de alteração de senha para o usuário ID: {}", user.getId());
+
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+            log.warn("Senha atual incorreta para o usuário ID: {}", user.getId());
+            throw new AuthException("Senha atual incorreta");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setRequirePasswordChange(false);
+        userRepository.save(user);
+
+        log.info("Senha alterada com sucesso para o usuário ID: {}", user.getId());
+    }
+
+    private String generateTemporaryPassword() {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$";
+        java.security.SecureRandom random = new java.security.SecureRandom();
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(random.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
 }

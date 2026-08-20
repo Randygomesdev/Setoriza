@@ -59,6 +59,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
+    // Trata BadCredentialsException com 401
+    @ExceptionHandler(org.springframework.security.authentication.BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentialsException(org.springframework.security.authentication.BadCredentialsException ex) {
+        log.warn("Tentativa de login com credenciais incorretas: {}", ex.getMessage());
+        ErrorResponse error = new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), "E-mail ou senha incorretos");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
     // Fallback para qualquer outro erro inesperado
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneralException(Exception ex) {

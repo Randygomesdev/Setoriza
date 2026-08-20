@@ -3,10 +3,13 @@ package br.com.innkercode.auth.controller;
 import br.com.innkercode.auth.dto.request.AuthenticationRequest;
 import br.com.innkercode.auth.dto.request.ForgotPasswordRequest;
 import br.com.innkercode.auth.dto.request.ResetPasswordRequest;
+import br.com.innkercode.auth.dto.request.ChangePasswordRequest;
 import br.com.innkercode.auth.dto.response.AuthenticationResponse;
 import br.com.innkercode.auth.dto.request.RegisterRequest;
 
 import br.com.innkercode.auth.service.AuthService;
+import br.com.innkercode.auth.domain.entity.User;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -94,7 +97,7 @@ public class AuthController {
             log.warn("Código OAuth2 inválido ou expirado.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        AuthenticationResponse response = new AuthenticationResponse(jwt, null, null, null, null, null);
+        AuthenticationResponse response = new AuthenticationResponse(jwt, null, null, null, null, null, false);
         org.springframework.http.ResponseCookie cookie = createCookie(jwt);
         return ResponseEntity.ok()
                 .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())

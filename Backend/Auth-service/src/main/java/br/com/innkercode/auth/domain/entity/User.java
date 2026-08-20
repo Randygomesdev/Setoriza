@@ -55,6 +55,9 @@ public class User extends BaseEntity implements UserDetails{
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(name = "require_password_change", nullable = false)
+    private boolean requirePasswordChange = false;
+
     @Column(name = "sectors")
     private String sectors;
 

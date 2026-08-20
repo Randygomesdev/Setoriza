@@ -28,6 +28,18 @@
         text-align: center;
         color: #333;
       }
+      .temp-pass {
+        font-family: monospace;
+        font-size: 20px;
+        background: #f1f5f9;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px dashed #cbd5e1;
+        display: inline-block;
+        letter-spacing: 2px;
+        margin: 15px 0;
+        color: #0f172a;
+      }
       .button {
         background: linear-gradient(to right, #2563eb, #1d4ed8);
         color: white !important;
@@ -36,7 +48,7 @@
         border-radius: 30px;
         font-weight: bold;
         display: inline-block;
-        margin: 30px 0;
+        margin: 20px 0;
         box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
       }
       .footer {
@@ -54,20 +66,20 @@
         <h1>Setoriza</h1>
       </div>
       <div class="content">
-        <h2 th:text="'Olá, ' + ${name} + '!'">Olá!</h2>
+        <h2 th:text="'Bem-vindo(a), ' + ${name} + '!'">Bem-vindo(a)!</h2>
         <p>
-          Recebemos uma solicitação para redefinir a senha da sua conta no
-          Setoriza.
+          Sua conta no <strong>Setoriza</strong> foi criada com sucesso pelo administrador do seu escritório.
         </p>
-        <p>Clique no botão abaixo para escolher uma nova senha:</p>
- 
-        <a th:href="${resetUrl}" class="button">Redefinir minha senha</a>
- 
-        <p style="font-size: 14px; color: #666">
-          Se você não solicitou essa alteração, pode ignorar este e-mail com
-          segurança.
-        </p>
-        <p style="font-size: 14px; color: #666">O link expira em 24 horas.</p>
+        <p>Abaixo está o seu e-mail de acesso e a sua senha temporária provisória:</p>
+        
+        <p><strong>E-mail:</strong> <span th:text="${email}">exemplo@setoriza.com</span></p>
+        <div>
+          <span class="temp-pass" th:text="${temporaryPassword}">TEMP1234</span>
+        </div>
+        
+        <p><em>Importante: Por motivos de segurança, você deverá alterar esta senha em seu primeiro acesso.</em></p>
+
+        <a th:href="${loginUrl}" class="button">Acessar minha conta</a>
       </div>
       <div class="footer">
         &copy; 2026 Setoriza. Todos os direitos reservados.

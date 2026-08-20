@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import br.com.innkercode.auth.domain.model.UserRole;
 import br.com.innkercode.auth.dto.request.CreateUserRequest;
+import br.com.innkercode.auth.dto.request.ChangePasswordRequest;
 import br.com.innkercode.auth.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -76,7 +77,9 @@ public class UserController {
                         user.getEmail(),
                         user.getPictureUrl(),
                         user.getRole().name(),
-                        user.getSectors()
+                        user.getSectors(),
+                        null,
+                        user.isActive()
                 ))
                 .toList();
         return ResponseEntity.ok(response);
@@ -94,7 +97,9 @@ public class UserController {
                 user.getEmail(),
                 user.getPictureUrl(),
                 user.getRole().name(),
-                user.getSectors()
+                user.getSectors(),
+                null,
+                user.isActive()
         ));
     }
 
@@ -124,5 +129,58 @@ public class UserController {
 
         UserResponse response = authService.updateUser(id, request);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/toggle-active")
+    @PreAuthorize("hasAnyRole('MASTER', 'ADMIN')")
+    @Operation(summary = "Ativar/Desativar colaborador", description = "Altera o status de atividade (active) de um colaborador. Colaboradores inativos não conseguem realizar login.")
+    public ResponseEntity<UserResponse> toggleActive(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal User currentUser
+    ) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User userToToggle = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+
+        // Bloqueia alteração do MASTER por admins comuns
+        if (currentUser.getRole() == UserRole.ADMIN && userToToggle.getRole() == UserRole.MASTER) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // Evita que o usuário desative a si próprio
+        if (currentUser.getId().equals(userToToggle.getId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        userToToggle.setActive(!userToToggle.isActive());
+        userRepository.save(userToToggle);
+
+        UserResponse response = new UserResponse(
+                userToToggle.getId(),
+                userToToggle.getName(),
+                userToToggle.getEmail(),
+                userToToggle.getPictureUrl(),
+                userToToggle.getRole().name(),
+                userToToggle.getSectors(),
+                null,
+                userToToggle.isActive()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Alterar senha do usuário logado", description = "Permite que o usuário altere sua própria senha, validando a senha atual. Usado no primeiro acesso ou alteração normal.")
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal User user
+    ) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        authService.changePassword(user, request);
+        return ResponseEntity.ok().build();
     }
 }
