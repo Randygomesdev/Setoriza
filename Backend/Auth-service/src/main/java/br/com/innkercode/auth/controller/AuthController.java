@@ -3,10 +3,13 @@ package br.com.innkercode.auth.controller;
 import br.com.innkercode.auth.dto.request.AuthenticationRequest;
 import br.com.innkercode.auth.dto.request.ForgotPasswordRequest;
 import br.com.innkercode.auth.dto.request.ResetPasswordRequest;
+import br.com.innkercode.auth.dto.request.ChangePasswordRequest;
 import br.com.innkercode.auth.dto.response.AuthenticationResponse;
 import br.com.innkercode.auth.dto.request.RegisterRequest;
 
 import br.com.innkercode.auth.service.AuthService;
+import br.com.innkercode.auth.domain.entity.User;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,6 +33,16 @@ public class AuthController {
     private final AuthService authService;
     private final OAuth2TokenExchangeService tokenExchangeService;
 
+    private org.springframework.http.ResponseCookie createCookie(String token) {
+        return org.springframework.http.ResponseCookie.from("token", token)
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(86400)
+                .sameSite("Lax")
+                .build();
+    }
+
     @PostMapping("/register")
     @Operation(summary = "Registrar um novo usuário", description = "Cria um novo usuário no sistema e retorna um token JWT")
     public ResponseEntity<AuthenticationResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -40,7 +53,10 @@ public class AuthController {
                 .buildAndExpand("me")
                 .toUri();
         log.info("Usuário registrado com sucesso.");
-        return ResponseEntity.created(uri).body(response);
+        org.springframework.http.ResponseCookie cookie = createCookie(response.token());
+        return ResponseEntity.created(uri)
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
     @PostMapping("/login")
@@ -49,7 +65,10 @@ public class AuthController {
         log.info("Tentativa de login recebida.");
         AuthenticationResponse response = authService.authenticate(request);
         log.info("Login realizado com sucesso.");
-        return ResponseEntity.ok(response);
+        org.springframework.http.ResponseCookie cookie = createCookie(response.token());
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
     }
 
     @PostMapping("/forgot-password")
@@ -78,6 +97,25 @@ public class AuthController {
             log.warn("Código OAuth2 inválido ou expirado.");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        return ResponseEntity.ok(new AuthenticationResponse(jwt, null, null, null, null, null));
+        AuthenticationResponse response = new AuthenticationResponse(jwt, null, null, null, null, null, false);
+        org.springframework.http.ResponseCookie cookie = createCookie(jwt);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(response);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "Efetuar logout", description = "Invalida o cookie de autenticação httpOnly")
+    public ResponseEntity<Void> logout() {
+        org.springframework.http.ResponseCookie cookie = org.springframework.http.ResponseCookie.from("token", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0)
+                .sameSite("Lax")
+                .build();
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.SET_COOKIE, cookie.toString())
+                .build();
     }
 }

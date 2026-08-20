@@ -15,10 +15,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && path !== '/auth/login') {
     // Session expired or invalid token
     useAuthStore.getState().logout();
     throw new Error('Sessão expirada. Por favor, faça login novamente.');
@@ -55,6 +56,7 @@ export const api = {
         email: string;
         role: 'MASTER' | 'ADMIN' | 'USER';
         pictureUrl?: string;
+        requirePasswordChange: boolean;
       }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
@@ -70,6 +72,17 @@ export const api = {
       return request<void>('/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({ token, newPassword }),
+      });
+    },
+    changePassword: async (currentPassword: string, newPassword: string) => {
+      return request<void>('/users/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    },
+    logout: async () => {
+      return request<void>('/auth/logout', {
+        method: 'POST',
       });
     },
   },
@@ -246,6 +259,11 @@ export const api = {
         body: JSON.stringify(user),
       });
     },
+    toggleActive: async (id: string) => {
+      return request<any>(`/users/${id}/toggle-active`, {
+        method: 'PUT',
+      });
+    },
   },
   
   clients: {
@@ -257,6 +275,7 @@ export const api = {
     },
     create: async (client: { 
       companyName: string; 
+      tradeName: string;
       cnpj: string;
       whatsappApiType?: string;
       metaPhoneNumberId?: string;
@@ -271,6 +290,7 @@ export const api = {
     },
     update: async (id: string, client: { 
       companyName: string; 
+      tradeName: string;
       cnpj: string;
       whatsappApiType?: string;
       metaPhoneNumberId?: string;

@@ -27,7 +27,7 @@ public class EvolutionIntegrationController {
     public ResponseEntity<Map<String, Object>> getStatus(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         Map<String, Object> connectionState = evolutionClient.getConnectionState();
@@ -53,7 +53,7 @@ public class EvolutionIntegrationController {
     public ResponseEntity<Map<String, Object>> createInstance(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(evolutionClient.createInstance());
@@ -63,7 +63,7 @@ public class EvolutionIntegrationController {
     public ResponseEntity<Map<String, Object>> getQrCode(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         return ResponseEntity.ok(evolutionClient.getQrCode());
@@ -73,7 +73,7 @@ public class EvolutionIntegrationController {
     public ResponseEntity<Void> logout(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         evolutionClient.logoutInstance();
@@ -85,7 +85,7 @@ public class EvolutionIntegrationController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @RequestBody Map<String, String> payload
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         String serverUrl = payload.get("serverUrl");
@@ -99,7 +99,7 @@ public class EvolutionIntegrationController {
     public ResponseEntity<br.com.innkercode.ticket.domain.entity.WhatsAppConfig> getConfig(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         br.com.innkercode.ticket.domain.entity.WhatsAppConfig config = whatsAppConfigRepository.findById(GLOBAL_CONFIG_ID)
@@ -115,7 +115,7 @@ public class EvolutionIntegrationController {
             @RequestHeader(value = "X-User-Role", required = false) String userRole,
             @RequestBody br.com.innkercode.ticket.domain.entity.WhatsAppConfig newConfig
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         br.com.innkercode.ticket.domain.entity.WhatsAppConfig config = whatsAppConfigRepository.findById(GLOBAL_CONFIG_ID)
@@ -136,7 +136,7 @@ public class EvolutionIntegrationController {
     public ResponseEntity<java.util.Map<String, Object>> testMetaConnection(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
     ) {
-        if (!"MASTER".equals(userRole) && !"ADMIN".equals(userRole)) {
+        if (!"MASTER".equals(userRole)) {
             return ResponseEntity.status(403).build();
         }
         

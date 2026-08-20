@@ -27,6 +27,9 @@ public class Client extends BaseEntity {
     @Column(name = "company_name", nullable = false)
     private String companyName;
 
+    @Column(name = "trade_name", nullable = false)
+    private String tradeName;
+
     @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<ClientContact> contacts = new ArrayList<>();

@@ -7,14 +7,18 @@ export interface UserSession {
   role: 'MASTER' | 'ADMIN' | 'USER';
   sectors: string[];
   pictureUrl?: string;
+  requirePasswordChange: boolean;
 }
 
 interface AuthState {
   token: string | null;
   user: UserSession | null;
   isAuthenticated: boolean;
+  isDarkMode: boolean;
   login: (token: string, user: Omit<UserSession, 'sectors'>) => void;
   logout: () => void;
+  toggleTheme: () => void;
+  setPasswordChanged: () => void;
 }
 
 function parseJwt(token: string) {
@@ -35,31 +39,28 @@ function parseJwt(token: string) {
 }
 
 export const useAuthStore = create<AuthState>((set) => {
-  const storedToken = localStorage.getItem('setoriza_token');
   const storedUser = localStorage.getItem('setoriza_user');
 
-  let initialToken: string | null = storedToken;
-  let initialUser: UserSession | null = null;
-  let isExpired = false;
-
-  if (storedToken) {
-    const claims = parseJwt(storedToken);
-    if (claims && claims.exp) {
-      const expirationDate = new Date(claims.exp * 1000);
-      if (expirationDate.getTime() < Date.now()) {
-        isExpired = true;
-      }
-    } else {
-      isExpired = true;
+  const getInitialTheme = () => {
+    const saved = localStorage.getItem('setoriza_theme');
+    if (saved) {
+      return saved === 'dark';
     }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+
+  const initialDark = getInitialTheme();
+  // Apply immediately on file load to avoid flash
+  if (initialDark) {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
   }
 
-  if (isExpired) {
-    localStorage.removeItem('setoriza_token');
-    localStorage.removeItem('setoriza_user');
-    initialToken = null;
-    initialUser = null;
-  } else if (storedUser) {
+  let initialToken = localStorage.getItem('setoriza_token') || null;
+  let initialUser: UserSession | null = null;
+
+  if (storedUser) {
     try {
       initialUser = JSON.parse(storedUser);
     } catch (e) {
@@ -70,7 +71,8 @@ export const useAuthStore = create<AuthState>((set) => {
   return {
     token: initialToken,
     user: initialUser,
-    isAuthenticated: !!initialToken && !!initialUser,
+    isAuthenticated: !!initialUser,
+    isDarkMode: initialDark,
     login: (token, userDetails) => {
       // Decode JWT to extract sectors claim
       const claims = parseJwt(token);
@@ -89,16 +91,42 @@ export const useAuthStore = create<AuthState>((set) => {
         ...userDetails,
         role: (claims?.role || userDetails.role || 'USER') as any,
         sectors: sectorsList,
+        requirePasswordChange: userDetails.requirePasswordChange || false,
       };
 
-      localStorage.setItem('setoriza_token', token);
       localStorage.setItem('setoriza_user', JSON.stringify(fullUser));
+      localStorage.setItem('setoriza_token', token);
       set({ token, user: fullUser, isAuthenticated: true });
     },
     logout: () => {
-      localStorage.removeItem('setoriza_token');
+      // Invalida o cookie de sessão httpOnly no backend
+      fetch('http://localhost:8080/api/v1/auth/logout', {
+        method: 'POST',
+        credentials: 'include'
+      }).catch(err => {
+        console.error('Erro ao chamar logout no backend:', err);
+      });
+
       localStorage.removeItem('setoriza_user');
+      localStorage.removeItem('setoriza_token');
       set({ token: null, user: null, isAuthenticated: false });
     },
+    toggleTheme: () => set((state) => {
+      const nextTheme = !state.isDarkMode;
+      localStorage.setItem('setoriza_theme', nextTheme ? 'dark' : 'light');
+      // Sync theme with document classList
+      if (nextTheme) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      return { isDarkMode: nextTheme };
+    }),
+    setPasswordChanged: () => set((state) => {
+      if (!state.user) return {};
+      const updatedUser = { ...state.user, requirePasswordChange: false };
+      localStorage.setItem('setoriza_user', JSON.stringify(updatedUser));
+      return { user: updatedUser };
+    }),
   };
 });
