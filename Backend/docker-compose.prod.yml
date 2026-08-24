@@ -182,6 +182,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       AUTH_SERVICE_URL: http://auth-service:8081
       TICKET_SERVICE_URL: http://ticket-service:8082
+      TICKET_WS_URL: ws://ticket-service:8082
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
