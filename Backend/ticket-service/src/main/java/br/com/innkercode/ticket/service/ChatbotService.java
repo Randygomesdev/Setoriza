@@ -572,7 +572,7 @@ public class ChatbotService {
                                     String processedFilename = ImageCompressor.getNewFilename(filename != null ? filename : "file");
                                     String processedContentType = ImageCompressor.getNewContentType(mimeType != null ? mimeType : "application/octet-stream");
 
-                                    if (processedFilename == null || processedFilename.isBlank()) {
+                                    if (processedFilename == null || processedFilename.isBlank() || "file".equals(processedFilename)) {
                                         String extension;
                                         if ("image".equals(type)) {
                                             extension = ".jpg";
