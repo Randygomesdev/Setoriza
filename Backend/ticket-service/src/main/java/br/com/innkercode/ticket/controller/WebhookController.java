@@ -75,7 +75,7 @@ public class WebhookController {
     public ResponseEntity<Void> receiveMetaWebhook(
             @RequestBody java.util.Map<String, Object> payload
     ) {
-        log.info("Recebido webhook da Meta API.");
+        log.info("Recebido webhook da Meta API. Payload: {}", payload);
         try {
             chatbotService.processIncomingMetaWebhook(payload);
             return ResponseEntity.ok().build();
