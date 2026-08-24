@@ -99,8 +99,8 @@ export const useAuthStore = create<AuthState>((set) => {
       set({ token, user: fullUser, isAuthenticated: true });
     },
     logout: () => {
-      // Invalida o cookie de sessão httpOnly no backend
-      fetch('http://localhost:8080/api/v1/auth/logout', {
+      const host = window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin;
+      fetch(`${host}/api/v1/auth/logout`, {
         method: 'POST',
         credentials: 'include'
       }).catch(err => {

@@ -176,4 +176,12 @@ public class MessageService {
     public boolean hasSystemMessage(UUID ticketId) {
         return messageRepository.existsByTicketIdAndSenderType(ticketId, SenderType.SISTEMA);
     }
+
+    @Transactional(readOnly = true)
+    public boolean hasTriageMenuBeenSent(UUID ticketId) {
+        return messageRepository.findByTicketIdOrderBySentAtAsc(ticketId).stream()
+                .anyMatch(m -> m.getSenderType() == SenderType.SISTEMA 
+                        && m.getContent() != null 
+                        && (m.getContent().contains("escolha uma das opções") || m.getContent().contains("Encaminhei o seu contato") || m.getContent().contains("Opção inválida")));
+    }
 }

@@ -1,6 +1,7 @@
 import { useAuthStore } from '../store/authStore';
 
-const BASE_URL = 'http://localhost:8080/api/v1';
+const host = window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin;
+const BASE_URL = `${host}/api/v1`;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token;

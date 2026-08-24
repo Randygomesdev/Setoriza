@@ -10,7 +10,10 @@ export const connectWebSocket = (token: string) => {
   }
 
   // Construct broker URL with token in query params for the handshake interceptor
-  const brokerURL = `ws://localhost:8080/api/v1/ws?token=${encodeURIComponent(token)}`;
+  const isHttps = window.location.protocol === 'https:';
+  const wsProtocol = isHttps ? 'wss:' : 'ws:';
+  const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host;
+  const brokerURL = `${wsProtocol}//${host}/api/v1/ws?token=${encodeURIComponent(token)}`;
 
   stompClient = new Client({
     brokerURL,
