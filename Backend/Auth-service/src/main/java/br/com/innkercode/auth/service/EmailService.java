@@ -20,7 +20,7 @@ public class EmailService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
 
-    @Value("${MAIL_USERNAME}")
+    @Value("${spring.mail.username}")
     private String mailFrom;
 
     public void sendPasswordResetEmail(String to, String name, String token) {
