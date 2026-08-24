@@ -156,11 +156,14 @@ public class EvolutionIntegrationController {
                     .baseUrl("https://graph.facebook.com/v19.0")
                     .build();
 
-            java.util.Map<?, ?> response = testClient.get()
+            String jsonResponse = testClient.get()
                     .uri("/{phoneNumberId}", config.getMetaPhoneNumberId())
                     .header("Authorization", "Bearer " + config.getMetaAccessToken())
                     .retrieve()
-                    .body(java.util.Map.class);
+                    .body(String.class);
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            java.util.Map<?, ?> response = mapper.readValue(jsonResponse, java.util.Map.class);
 
             if (response != null && response.containsKey("id")) {
                 return ResponseEntity.ok(java.util.Map.of(

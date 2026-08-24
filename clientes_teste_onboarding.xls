@@ -1,0 +1,35 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"/></head>
+<body>
+  <table border="1">
+    <tr style="background-color: #3b82f6; color: #ffffff; font-weight: bold;">
+      <th>CNPJ</th>
+      <th>Razão Social</th>
+      <th>Nome Fantasia</th>
+      <th>Nome do Responsável</th>
+      <th>Contato do Responsável</th>
+    </tr>
+    <tr>
+      <td>22123456000100</td>
+      <td>Alfa Transportes e Logistica LTDA</td>
+      <td>Alfa Transportes</td>
+      <td>Randy Gomes Dev</td>
+      <td>5527998349791</td>
+    </tr>
+    <tr>
+      <td>33456789000122</td>
+      <td>Beta Alimentos e Comercio S.A.</td>
+      <td>Beta Alimentos</td>
+      <td>Maria Silva</td>
+      <td>5511999999999</td>
+    </tr>
+    <tr>
+      <td>44567890000133</td>
+      <td>Gama Servicos Medicos Sociedade Simples</td>
+      <td>Gama Saúde</td>
+      <td>João Santos</td>
+      <td>5511988888888</td>
+    </tr>
+  </table>
+</body>
+</html>

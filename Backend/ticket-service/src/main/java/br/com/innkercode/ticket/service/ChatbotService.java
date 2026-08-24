@@ -207,13 +207,13 @@ public class ChatbotService {
             if (ticket.getStatus() == TicketStatus.TRIAGEM) {
                 if (messageType == MessageType.TEXTO) {
                     // Só processamos a resposta se a primeira mensagem de sistema (menu ou confirmação da IA) já tiver sido enviada
-                    if (messageService.hasSystemMessage(ticket.getId())) {
+                    if (messageService.hasTriageMenuBeenSent(ticket.getId())) {
                         handleTriageInput(ticket, content);
                     } else {
                         log.info("Mensagem acumulada na janela de debounce de triagem para o ticket {}", ticket.getId());
                     }
                 } else {
-                    if (messageService.hasSystemMessage(ticket.getId())) {
+                    if (messageService.hasTriageMenuBeenSent(ticket.getId())) {
                         String botMsg = "Por favor, digite apenas o número da opção desejada para direcionarmos seu contato.";
                         messageService.saveMessage(ticket, SenderType.SISTEMA, MessageType.TEXTO, botMsg);
                         whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), botMsg);
@@ -573,7 +573,16 @@ public class ChatbotService {
                                     String processedContentType = ImageCompressor.getNewContentType(mimeType != null ? mimeType : "application/octet-stream");
 
                                     if (processedFilename == null || processedFilename.isBlank()) {
-                                        String extension = "image".equals(type) ? ".jpg" : ".bin";
+                                        String extension;
+                                        if ("image".equals(type)) {
+                                            extension = ".jpg";
+                                        } else if ("audio".equals(type)) {
+                                            extension = ".ogg";
+                                        } else if ("video".equals(type)) {
+                                            extension = ".mp4";
+                                        } else {
+                                            extension = ".bin";
+                                        }
                                         processedFilename = "media_" + UUID.randomUUID() + extension;
                                     }
 
@@ -587,14 +596,14 @@ public class ChatbotService {
                         }
 
                         // Verificar se o número de WhatsApp pertence a algum contato já cadastrado
-                        List<ClientContact> contacts = clientContactRepository.findAllByWhatsappNumber(sender);
+                        List<ClientContact> dbContacts = clientContactRepository.findAllByWhatsappNumber(sender);
 
-                        if (contacts.isEmpty()) {
+                        if (dbContacts.isEmpty()) {
                             handleUnknownContact(sender, pushName, messageType, content, messageId);
-                        } else if (contacts.size() == 1) {
-                            handleKnownContact(contacts.get(0), messageType, content, pushName, messageId);
+                        } else if (dbContacts.size() == 1) {
+                            handleKnownContact(dbContacts.get(0), messageType, content, pushName, messageId);
                         } else {
-                            handleMultiContact(contacts, messageType, content, pushName, messageId);
+                            handleMultiContact(dbContacts, messageType, content, pushName, messageId);
                         }
                     }
                 }
@@ -630,7 +639,7 @@ public class ChatbotService {
         }
 
         // Verifica se o sistema já enviou alguma mensagem (para evitar duplicidade ou interceptar triagem manual)
-        if (messageService.hasSystemMessage(ticketId)) {
+        if (messageService.hasTriageMenuBeenSent(ticketId)) {
             log.info("Menu ou mensagem de sistema já enviada para o ticket {}. Cancelando triagem agendada.", ticketId);
             return;
         }
@@ -790,7 +799,7 @@ public class ChatbotService {
             messageService.saveMessage(ticket, SenderType.CLIENTE, messageType, content, messageId);
 
             if (ticket.getStatus() == TicketStatus.TRIAGEM) {
-                if (messageType == MessageType.TEXTO && messageService.hasSystemMessage(ticket.getId())) {
+                if (messageType == MessageType.TEXTO && messageService.hasTriageMenuBeenSent(ticket.getId())) {
                     handleTriageInput(ticket, content);
                 }
             } else if (ticket.getStatus() == TicketStatus.IDENTIFICACAO_NOME) {

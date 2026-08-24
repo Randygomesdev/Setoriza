@@ -27,6 +27,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDateTime;
 
+import br.com.innkercode.ticket.service.S3Service;
+
 @RestController
 @RequestMapping("/tickets")
 @RequiredArgsConstructor
@@ -36,6 +38,7 @@ public class TicketController {
     private final TicketService ticketService;
     private final MessageService messageService;
     private final SlaMetricsService slaMetricsService;
+    private final S3Service s3Service;
 
     @GetMapping
     public ResponseEntity<List<Ticket>> listTickets(
@@ -214,5 +217,23 @@ public class TicketController {
         }
         DashboardSlaMetricsResponse metrics = slaMetricsService.getDashboardSlaMetrics();
         return ResponseEntity.ok(metrics);
+    }
+
+    @GetMapping("/public/media/{fileKey}")
+    public ResponseEntity<byte[]> getPublicMedia(@PathVariable String fileKey) {
+        log.info("Servindo arquivo público do S3: {}", fileKey);
+        try {
+            var responseBytes = s3Service.downloadFileResponse(fileKey);
+            String contentType = responseBytes.response().contentType();
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "application/octet-stream";
+            }
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
+                    .body(responseBytes.asByteArray());
+        } catch (Exception e) {
+            log.error("Erro ao servir mídia pública {}", fileKey, e);
+            return ResponseEntity.notFound().build();
+        }
     }
 }

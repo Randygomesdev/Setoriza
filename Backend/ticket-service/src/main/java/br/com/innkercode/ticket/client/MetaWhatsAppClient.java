@@ -22,6 +22,9 @@ public class MetaWhatsAppClient {
     @Value("${whatsapp.meta.access-token:}")
     private String defaultAccessToken;
 
+    @Value("${setoriza.base-url:}")
+    private String sectorizaBaseUrl;
+
     public MetaWhatsAppClient(@Value("${whatsapp.meta.url:https://graph.facebook.com/v19.0}") String baseUrl) {
         this.restClient = RestClient.builder()
                 .baseUrl(baseUrl)
@@ -51,13 +54,14 @@ public class MetaWhatsAppClient {
                     )
             );
 
-            Map<?, ?> response = restClient.post()
+            String jsonResponse = restClient.post()
                     .uri("/{phoneNumberId}/messages", phoneNumberId)
                     .header("Authorization", "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .body(Map.class);
+                    .body(String.class);
+            Map<?, ?> response = parseJsonResponse(jsonResponse);
 
             log.info("Mensagem enviada com sucesso via Meta API");
             return extractMessageId(response);
@@ -79,9 +83,18 @@ public class MetaWhatsAppClient {
         log.info("Enviando mídia {} Meta API para {} usando PhoneID {}", mediatype, number, phoneNumberId);
 
         try {
+            String finalMediaUrl = mediaUrl;
+            if (mediaUrl != null && mediaUrl.contains("/setoriza-medias/")) {
+                String fileKey = mediaUrl.substring(mediaUrl.lastIndexOf("/") + 1);
+                if (sectorizaBaseUrl != null && !sectorizaBaseUrl.isBlank()) {
+                    finalMediaUrl = sectorizaBaseUrl + "/api/v1/tickets/public/media/" + fileKey;
+                }
+            }
+            log.info("URL final da mídia para a Meta: {}", finalMediaUrl);
+
             String metaMediaType = "image".equalsIgnoreCase(mediatype) ? "image" : "document";
             Map<String, Object> mediaObject = new HashMap<>();
-            mediaObject.put("link", mediaUrl);
+            mediaObject.put("link", finalMediaUrl);
             if (caption != null && !caption.isBlank()) {
                 mediaObject.put("caption", caption);
             }
@@ -97,13 +110,14 @@ public class MetaWhatsAppClient {
                     metaMediaType, mediaObject
             );
 
-            Map<?, ?> response = restClient.post()
+            String jsonResponse = restClient.post()
                     .uri("/{phoneNumberId}/messages", phoneNumberId)
                     .header("Authorization", "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .body(Map.class);
+                    .body(String.class);
+            Map<?, ?> response = parseJsonResponse(jsonResponse);
 
             log.info("Mídia enviada com sucesso via Meta API");
             return extractMessageId(response);
@@ -125,21 +139,31 @@ public class MetaWhatsAppClient {
         log.info("Enviando áudio PTT Meta API para {} usando PhoneID {}", number, phoneNumberId);
 
         try {
+            String finalMediaUrl = mediaUrl;
+            if (mediaUrl != null && mediaUrl.contains("/setoriza-medias/")) {
+                String fileKey = mediaUrl.substring(mediaUrl.lastIndexOf("/") + 1);
+                if (sectorizaBaseUrl != null && !sectorizaBaseUrl.isBlank()) {
+                    finalMediaUrl = sectorizaBaseUrl + "/api/v1/tickets/public/media/" + fileKey;
+                }
+            }
+            log.info("URL final do áudio para a Meta: {}", finalMediaUrl);
+
             Map<String, Object> body = Map.of(
                     "messaging_product", "whatsapp",
                     "recipient_type", "individual",
                     "to", number,
                     "type", "audio",
-                    "audio", Map.of("link", mediaUrl)
+                    "audio", Map.of("link", finalMediaUrl)
             );
 
-            Map<?, ?> response = restClient.post()
+            String jsonResponse = restClient.post()
                     .uri("/{phoneNumberId}/messages", phoneNumberId)
                     .header("Authorization", "Bearer " + accessToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
-                    .body(Map.class);
+                    .body(String.class);
+            Map<?, ?> response = parseJsonResponse(jsonResponse);
 
             log.info("Áudio PTT enviado com sucesso via Meta API");
             return extractMessageId(response);
@@ -158,11 +182,12 @@ public class MetaWhatsAppClient {
 
         try {
             log.info("Obtendo URL de download da mídia Meta: {}", mediaId);
-            Map<?, ?> mediaMetadata = restClient.get()
+            String jsonResponse = restClient.get()
                     .uri("/{mediaId}", mediaId)
                     .header("Authorization", "Bearer " + accessToken)
                     .retrieve()
-                    .body(Map.class);
+                    .body(String.class);
+            Map<?, ?> mediaMetadata = parseJsonResponse(jsonResponse);
 
             if (mediaMetadata == null || !mediaMetadata.containsKey("url")) {
                 log.warn("URL de mídia não retornada pela Meta API.");
@@ -209,5 +234,15 @@ public class MetaWhatsAppClient {
             }
         }
         return null;
+    }
+
+    private Map<?, ?> parseJsonResponse(String json) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, Map.class);
+        } catch (Exception e) {
+            log.error("Erro ao fazer parse da resposta JSON da Meta", e);
+            return null;
+        }
     }
 }
