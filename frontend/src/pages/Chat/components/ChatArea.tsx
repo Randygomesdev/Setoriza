@@ -573,7 +573,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     msg.content.toLowerCase().endsWith('.webm') || 
                     msg.content.toLowerCase().endsWith('.ogg') || 
                     msg.content.toLowerCase().endsWith('.opus') ||
-                    msg.content.toLowerCase().endsWith('.mp3')
+                    msg.content.toLowerCase().endsWith('.mp3') ||
+                    msg.content.toLowerCase().endsWith('.wav') ||
+                    msg.content.toLowerCase().endsWith('.m4a') ||
+                    msg.content.toLowerCase().endsWith('.aac') ||
+                    msg.content.toLowerCase().endsWith('.amr') ||
+                    msg.content.toLowerCase().endsWith('_file') ||
+                    msg.content.toLowerCase().includes('voice_message')
                   ) ? (
                     <div className="py-1">
                       <audio 
@@ -619,7 +625,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     >
                       <Download size={14} />
                       <span className="truncate max-w-[180px]">
-                        {msg.content.substring(msg.content.lastIndexOf('/') + 1)}
+                        {(() => {
+                          const fileKey = msg.content.substring(msg.content.lastIndexOf('/') + 1);
+                          return fileKey.includes('_') ? fileKey.substring(fileKey.indexOf('_') + 1) : fileKey;
+                        })()}
                       </span>
                     </a>
                   ) : (
