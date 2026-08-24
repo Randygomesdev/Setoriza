@@ -163,19 +163,15 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
       
       const fetchPromises = filteredMessages.map(async (msg, index) => {
         try {
-          const response = await fetch(msg.content);
+          const response = await fetch(formatMediaUrl(msg.content));
           if (!response.ok) throw new Error(`Falha no HTTP status ${response.status}`);
           const blob = await response.blob();
           
           let folderName = 'Outros';
-          let extension = '.bin';
-          
           if (msg.messageType === 'IMAGEM') {
             folderName = 'Imagens';
-            extension = '.jpg';
           } else if (msg.messageType === 'AUDIO') {
             folderName = 'Audios';
-            extension = '.webm';
           } else if (
             (msg.content || '').toLowerCase().endsWith('.mp4') ||
             (msg.content || '').toLowerCase().endsWith('.mov') ||
@@ -183,29 +179,17 @@ export const ChatDetails: React.FC<ChatDetailsProps> = ({
             (msg.content || '').toLowerCase().includes('gif_playback')
           ) {
             folderName = 'Videos';
-            extension = (msg.content || '').toLowerCase().includes('gif_playback') ? '.mp4' : msg.content.substring(msg.content.lastIndexOf('.'));
           } else if (msg.messageType === 'DOCUMENTO') {
             folderName = 'Documentos';
-            const urlObj = new URL(msg.content);
-            const pathParts = urlObj.pathname.split('/');
-            const originalName = pathParts[pathParts.length - 1];
-            
-            if (originalName && originalName.includes('.')) {
-              extension = originalName.substring(originalName.lastIndexOf('.'));
-            } else if (msg.content.toLowerCase().endsWith('.webm')) {
-              extension = '.webm';
-            } else if (msg.content.toLowerCase().endsWith('.ogg')) {
-              extension = '.ogg';
-            } else if (msg.content.toLowerCase().endsWith('.opus')) {
-              extension = '.opus';
-            } else if (msg.content.toLowerCase().endsWith('.mp3')) {
-              extension = '.mp3';
-            } else if (msg.content.toLowerCase().endsWith('.pdf')) {
-              extension = '.pdf';
-            }
           }
           
-          const filename = `${folderName}/arquivo_${index + 1}${extension}`;
+          const fileKey = msg.content.substring(msg.content.lastIndexOf('/') + 1);
+          let originalName = fileKey.includes('_') ? fileKey.substring(fileKey.indexOf('_') + 1) : fileKey;
+          if (!originalName) {
+            originalName = `arquivo_${index + 1}`;
+          }
+          
+          const filename = `${folderName}/${originalName}`;
           zip.file(filename, blob);
         } catch (err) {
           console.error(`Erro ao baixar arquivo para ZIP: ${msg.content}`, err);
@@ -317,7 +301,7 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
   if (!activeTicket || !showDetailsPanel) return null;
 
   return (
-    <div className="w-72 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/40 backdrop-blur-md flex flex-col p-5 space-y-6 h-full overflow-y-auto">
+    <div className="fixed inset-y-0 right-0 z-50 w-72 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 flex flex-col p-5 space-y-6 h-full overflow-y-auto md:relative md:z-0 md:bg-white dark:md:bg-slate-900/40 md:shadow-none">
       <div className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-800">
         <h3 className="font-bold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-400">Detalhes do Ticket</h3>
         <button

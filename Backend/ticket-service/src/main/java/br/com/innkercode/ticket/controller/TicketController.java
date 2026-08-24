@@ -228,8 +228,16 @@ public class TicketController {
             if (contentType == null || contentType.isBlank()) {
                 contentType = "application/octet-stream";
             }
+            String cleanedFilename = fileKey;
+            if (fileKey.contains("_")) {
+                cleanedFilename = fileKey.substring(fileKey.indexOf("_") + 1);
+            }
+            String encodedFilename = java.net.URLEncoder.encode(cleanedFilename, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+
             return ResponseEntity.ok()
                     .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + cleanedFilename + "\"; filename*=UTF-8''" + encodedFilename)
                     .body(responseBytes.asByteArray());
         } catch (Exception e) {
             log.error("Erro ao servir mídia pública {}", fileKey, e);
