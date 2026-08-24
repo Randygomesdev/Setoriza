@@ -27,7 +27,7 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${gateway.public-paths:/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/logout,/api/v1/auth/forgot-password,/api/v1/auth/reset-password,/api/v1/auth/oauth2,/login/oauth2,/oauth2,/v3/api-docs,/swagger-ui,/api/v1/webhooks}")
+    @Value("${gateway.public-paths:/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/logout,/api/v1/auth/forgot-password,/api/v1/auth/reset-password,/api/v1/auth/oauth2,/login/oauth2,/oauth2,/v3/api-docs,/swagger-ui,/api/v1/webhooks,/api/v1/tickets/public/media}")
     private List<String> publicPaths;
 
     @Override
