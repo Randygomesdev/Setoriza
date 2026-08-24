@@ -88,13 +88,33 @@ public class ImageCompressor {
         return contentType;
     }
 
+    public static String sanitizeFilename(String filename) {
+        if (filename == null) {
+            return "file";
+        }
+        String name = filename;
+        String extension = "";
+        int dotIndex = filename.lastIndexOf('.');
+        if (dotIndex > 0) {
+            name = filename.substring(0, dotIndex);
+            extension = filename.substring(dotIndex);
+        }
+        
+        String normalized = java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD);
+        String denormalized = normalized.replaceAll("\\p{M}", "");
+        String sanitized = denormalized.replaceAll("[^a-zA-Z0-9\\-_]", "_");
+        
+        return sanitized + extension.replaceAll("[^a-zA-Z0-9.]", "");
+    }
+
     public static String getNewFilename(String originalFilename) {
+        String filename = originalFilename;
         if (originalFilename != null && (originalFilename.toLowerCase().endsWith(".png") || originalFilename.toLowerCase().endsWith(".jpeg") || originalFilename.toLowerCase().endsWith(".jpg"))) {
             int dotIndex = originalFilename.lastIndexOf('.');
             if (dotIndex > 0) {
-                return originalFilename.substring(0, dotIndex) + ".jpg";
+                filename = originalFilename.substring(0, dotIndex) + ".jpg";
             }
         }
-        return originalFilename;
+        return sanitizeFilename(filename);
     }
 }

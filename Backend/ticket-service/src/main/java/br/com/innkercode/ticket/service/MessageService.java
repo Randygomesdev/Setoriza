@@ -84,10 +84,24 @@ public class MessageService {
     public Message sendOperatorMediaMessage(Ticket ticket, byte[] fileBytes, String originalFilename, String contentType, String caption) {
         log.info("Processando envio de resposta humana com mídia para o ticket: {} - {}", ticket.getId(), ticket.getWhatsappNumber());
         
-        // Compactar imagem se for compatível (JPEG/PNG)
-        byte[] processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
-        String processedFilename = ImageCompressor.getNewFilename(originalFilename);
-        String processedContentType = ImageCompressor.getNewContentType(contentType);
+        byte[] processedBytes = fileBytes;
+        String processedContentType = contentType;
+        String processedFilename = originalFilename;
+
+        if (contentType != null && (contentType.contains("audio/webm") || (originalFilename != null && originalFilename.toLowerCase().endsWith(".webm")))) {
+            processedBytes = br.com.innkercode.ticket.util.AudioConverter.convertWebmToOgg(fileBytes);
+            processedContentType = "audio/ogg; codecs=opus";
+            if (originalFilename != null && originalFilename.lastIndexOf('.') > 0) {
+                processedFilename = originalFilename.substring(0, originalFilename.lastIndexOf('.')) + ".ogg";
+            } else {
+                processedFilename = "voice_message_" + System.currentTimeMillis() + ".ogg";
+            }
+            processedFilename = ImageCompressor.sanitizeFilename(processedFilename);
+        } else {
+            processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
+            processedFilename = ImageCompressor.getNewFilename(originalFilename);
+            processedContentType = ImageCompressor.getNewContentType(contentType);
+        }
         
         // 1. Fazer upload do arquivo para o S3
         String s3Url = s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
