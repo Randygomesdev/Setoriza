@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* ── Shadcn/ui required variables ────────────────────────────── */
-    --background: 248 250 252;         /* #F8FAFC */
+    --background: 245 245 245;         /* #F5F5F5 */
     --foreground: 15 23 42;            /* #0F172A */
 
     --card: 255 255 255;               /* #FFFFFF */
@@ -78,8 +78,8 @@
   }
 
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
     font-family: 'Inter', sans-serif;
   }
 }
