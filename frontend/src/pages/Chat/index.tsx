@@ -41,7 +41,7 @@ export const Chat: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'aguardando' | 'meus' | 'concluidos'>('meus');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showDetailsPanel, setShowDetailsPanel] = useState(true);
+  const [showDetailsPanel, setShowDetailsPanel] = useState(false);
   const [usersList, setUsersList] = useState<any[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTicketPhone, setNewTicketPhone] = useState('');
