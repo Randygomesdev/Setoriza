@@ -21,6 +21,15 @@ import {
   Smile
 } from 'lucide-react';
 
+const formatMediaUrl = (url: string) => {
+  if (url && url.includes('/setoriza-medias/')) {
+    const fileKey = url.substring(url.lastIndexOf('/') + 1);
+    const host = window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin;
+    return `${host}/api/v1/tickets/public/media/${fileKey}`;
+  }
+  return url;
+};
+
 interface ChatAreaProps {
   usersList: any[];
   isViewingFromHistory: boolean;
@@ -551,11 +560,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 >
                   {msg.messageType === 'IMAGEM' ? (
                     <div 
-                      onClick={() => onImageClick(msg.content)} 
+                      onClick={() => onImageClick(formatMediaUrl(msg.content))} 
                       className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 hover:opacity-90 transition-opacity cursor-zoom-in"
                     >
                       <img 
-                        src={msg.content} 
+                        src={formatMediaUrl(msg.content)} 
                         className="max-h-60 object-cover w-full shadow-inner rounded-lg" 
                         alt="Imagem enviada" 
                       />
@@ -568,7 +577,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   ) ? (
                     <div className="py-1">
                       <audio 
-                        src={msg.content} 
+                        src={formatMediaUrl(msg.content)} 
                         controls 
                         className={`max-w-xs md:max-w-md h-9 rounded-lg ${isMe ? 'filter invert hue-rotate-180 brightness-150' : ''}`}
                       />
@@ -576,7 +585,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   ) : msg.messageType === 'DOCUMENTO' && msg.content.toLowerCase().includes('gif_playback') ? (
                     <div className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 shadow-inner">
                       <video
-                        src={msg.content}
+                        src={formatMediaUrl(msg.content)}
                         autoPlay
                         loop
                         muted
@@ -592,14 +601,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   ) ? (
                     <div className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 shadow-inner">
                       <video
-                        src={msg.content}
+                        src={formatMediaUrl(msg.content)}
                         controls
                         className="max-h-60 object-contain w-full rounded-lg"
                       />
                     </div>
                   ) : msg.messageType === 'DOCUMENTO' ? (
                     <a 
-                      href={msg.content} 
+                      href={formatMediaUrl(msg.content)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold hover:bg-slate-500/10 transition-colors ${
