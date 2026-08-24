@@ -26,6 +26,15 @@ import {
 } from 'lucide-react';
 import { formatPhoneNumber, formatCNPJ } from '../utils/chatHelpers';
 
+const formatMediaUrl = (url: string) => {
+  if (url && url.includes('/setoriza-medias/')) {
+    const fileKey = url.substring(url.lastIndexOf('/') + 1);
+    const host = window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin;
+    return `${host}/api/v1/tickets/public/media/${fileKey}`;
+  }
+  return url;
+};
+
 interface ChatDetailsProps {
   usersList: any[];
   showDetailsPanel: boolean;
@@ -246,7 +255,7 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
         // Formatação especial se for mídia/anexo
         let text = msg.content;
         if (msg.messageType === 'IMAGEM') {
-          text = `<Imagem Anexada: ${msg.content}>`;
+          text = `<Imagem Anexada: ${formatMediaUrl(msg.content)}>`;
         } else if (
           (msg.content || '').toLowerCase().endsWith('.webm') || 
           (msg.content || '').toLowerCase().endsWith('.ogg') || 
@@ -254,17 +263,18 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
           (msg.content || '').toLowerCase().endsWith('.mp3') ||
           (msg.content || '').toLowerCase().includes('voice_message')
         ) {
-          text = `<Áudio enviado/recebido: ${msg.content}>`;
+          text = `<Áudio enviado/recebido: ${formatMediaUrl(msg.content)}>`;
         } else if (
           (msg.content || '').toLowerCase().endsWith('.mp4') ||
           (msg.content || '').toLowerCase().endsWith('.mov') ||
           (msg.content || '').toLowerCase().endsWith('.avi') ||
           (msg.content || '').toLowerCase().includes('gif_playback')
         ) {
-          text = `<Vídeo enviado/recebido: ${msg.content}>`;
+          text = `<Vídeo enviado/recebido: ${formatMediaUrl(msg.content)}>`;
         } else if (msg.messageType === 'DOCUMENTO') {
-          const fileName = msg.content.substring(msg.content.lastIndexOf('/') + 1);
-          text = `<Documento Anexado: ${fileName} (${msg.content})>`;
+          const fileKey = msg.content.substring(msg.content.lastIndexOf('/') + 1);
+          const fileName = fileKey.includes('_') ? fileKey.substring(fileKey.indexOf('_') + 1) : fileKey;
+          text = `<Documento Anexado: ${fileName} (${formatMediaUrl(msg.content)})>`;
         }
 
         return `[${time}] ${sender}: ${text}`;
@@ -761,10 +771,10 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                           >
                             {isImg ? (
                               <div
-                                onClick={() => onImageClick(msg.content)}
+                                onClick={() => onImageClick(formatMediaUrl(msg.content))}
                                 className="h-8 w-8 rounded-lg overflow-hidden shrink-0 cursor-zoom-in border border-slate-200/50"
                               >
-                                <img src={msg.content} className="h-full w-full object-cover" alt="Anexo" />
+                                <img src={formatMediaUrl(msg.content)} className="h-full w-full object-cover" alt="Anexo" />
                               </div>
                             ) : isAud ? (
                               <div className="h-8 w-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-500 flex items-center justify-center shrink-0 border border-blue-200/40 dark:border-blue-900/30">
@@ -781,7 +791,10 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                             )}
                             <div className="overflow-hidden flex-1">
                               <p className="text-[10px] font-medium text-slate-700 dark:text-slate-300 truncate">
-                                {msg.content.substring(msg.content.lastIndexOf('/') + 1)}
+                                {(() => {
+                                  const fileKey = msg.content.substring(msg.content.lastIndexOf('/') + 1);
+                                  return fileKey.includes('_') ? fileKey.substring(fileKey.indexOf('_') + 1) : fileKey;
+                                })()}
                               </p>
                               <span className={`text-[8px] uppercase font-bold ${
                                 isAud ? 'text-blue-500' : isVid ? 'text-purple-550' : 'text-slate-400'
@@ -790,7 +803,7 @@ Exportado em: ${new Date().toLocaleString('pt-BR')}
                               </span>
                             </div>
                             <a
-                              href={msg.content}
+                              href={formatMediaUrl(msg.content)}
                               download
                               target="_blank"
                               rel="noopener noreferrer"
