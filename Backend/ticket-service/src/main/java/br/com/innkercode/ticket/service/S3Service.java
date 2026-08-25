@@ -42,4 +42,18 @@ public class S3Service {
             throw new RuntimeException("Erro ao fazer upload de arquivo para o MinIO", e);
         }
     }
+
+    public software.amazon.awssdk.core.ResponseBytes<software.amazon.awssdk.services.s3.model.GetObjectResponse> downloadFileResponse(String fileKey) {
+        try {
+            software.amazon.awssdk.services.s3.model.GetObjectRequest getObjectRequest = 
+                software.amazon.awssdk.services.s3.model.GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(fileKey)
+                    .build();
+            return s3Client.getObjectAsBytes(getObjectRequest);
+        } catch (Exception e) {
+            log.error("Erro ao baixar arquivo do MinIO S3: {}", fileKey, e);
+            throw new RuntimeException("Erro ao baixar arquivo do MinIO", e);
+        }
+    }
 }

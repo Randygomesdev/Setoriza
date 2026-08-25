@@ -6,7 +6,9 @@ import lombok.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "client_contacts")
+@Table(name = "client_contacts", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"client_id", "whatsapp_number"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,7 +25,7 @@ public class ClientContact extends BaseEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Client client;
 
-    @Column(name = "whatsapp_number", nullable = false, unique = true)
+    @Column(name = "whatsapp_number", nullable = false)
     private String whatsappNumber;
 
     @Column(name = "contact_name", nullable = false)

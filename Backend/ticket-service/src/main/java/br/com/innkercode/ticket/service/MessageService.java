@@ -12,7 +12,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import br.com.innkercode.ticket.client.EvolutionClient;
 import br.com.innkercode.ticket.util.ImageCompressor;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +25,7 @@ public class MessageService {
     private final MessageRepository messageRepository;
     private final TicketRepository ticketRepository;
     private final TicketEventPublisher eventPublisher;
-    private final EvolutionClient evolutionClient;
+    private final WhatsAppGatewayService whatsAppGatewayService;
     private final S3Service s3Service;
 
     public List<Message> getMessagesByTicketId(UUID ticketId) {
@@ -68,8 +67,8 @@ public class MessageService {
         // 1. Salva a mensagem no banco local como COLABORADOR
         Message savedMessage = saveMessage(ticket, SenderType.COLABORADOR, MessageType.TEXTO, content);
         
-        // 2. Dispara a mensagem para o cliente via Evolution API
-        String whatsappMsgId = evolutionClient.sendTextMessage(ticket.getWhatsappNumber(), content);
+        // 2. Dispara a mensagem para o cliente via Gateway Service
+        String whatsappMsgId = whatsAppGatewayService.sendTextMessage(ticket.getWhatsappNumber(), content);
         if (whatsappMsgId != null) {
             savedMessage.setWhatsappMsgId(whatsappMsgId);
             savedMessage = messageRepository.save(savedMessage);
@@ -85,10 +84,24 @@ public class MessageService {
     public Message sendOperatorMediaMessage(Ticket ticket, byte[] fileBytes, String originalFilename, String contentType, String caption) {
         log.info("Processando envio de resposta humana com mídia para o ticket: {} - {}", ticket.getId(), ticket.getWhatsappNumber());
         
-        // Compactar imagem se for compatível (JPEG/PNG)
-        byte[] processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
-        String processedFilename = ImageCompressor.getNewFilename(originalFilename);
-        String processedContentType = ImageCompressor.getNewContentType(contentType);
+        byte[] processedBytes = fileBytes;
+        String processedContentType = contentType;
+        String processedFilename = originalFilename;
+
+        if (contentType != null && (contentType.contains("audio/webm") || (originalFilename != null && originalFilename.toLowerCase().endsWith(".webm")))) {
+            processedBytes = br.com.innkercode.ticket.util.AudioConverter.convertWebmToOgg(fileBytes);
+            processedContentType = "audio/ogg; codecs=opus";
+            if (originalFilename != null && originalFilename.lastIndexOf('.') > 0) {
+                processedFilename = originalFilename.substring(0, originalFilename.lastIndexOf('.')) + ".ogg";
+            } else {
+                processedFilename = "voice_message_" + System.currentTimeMillis() + ".ogg";
+            }
+            processedFilename = ImageCompressor.sanitizeFilename(processedFilename);
+        } else {
+            processedBytes = ImageCompressor.compressImage(fileBytes, contentType);
+            processedFilename = ImageCompressor.getNewFilename(originalFilename);
+            processedContentType = ImageCompressor.getNewContentType(contentType);
+        }
         
         // 1. Fazer upload do arquivo para o S3
         String s3Url = s3Service.uploadFile(processedFilename, processedBytes, processedContentType);
@@ -120,12 +133,12 @@ public class MessageService {
             }
         }
         
-        // 5. Dispara a mensagem para o cliente via Evolution API
+        // 5. Dispara a mensagem para o cliente via Gateway Service
         String whatsappMsgId;
         if ("audio".equals(mediatype)) {
-            whatsappMsgId = evolutionClient.sendWhatsAppAudio(ticket.getWhatsappNumber(), s3Url);
+            whatsappMsgId = whatsAppGatewayService.sendWhatsAppAudio(ticket.getWhatsappNumber(), s3Url);
         } else {
-            whatsappMsgId = evolutionClient.sendMediaMessage(
+            whatsappMsgId = whatsAppGatewayService.sendMediaMessage(
                     ticket.getWhatsappNumber(), 
                     s3Url, 
                     mediatype, 
@@ -157,5 +170,32 @@ public class MessageService {
             return saved;
         }
         return null;
+    }
+
+    @Transactional
+    public Message updateEditedMessage(String whatsappMsgId, String newContent) {
+        log.info("Processando edição de mensagem: whatsappMsgId = {}, novo conteúdo = {}", whatsappMsgId, newContent);
+        java.util.Optional<Message> messageOpt = messageRepository.findByWhatsappMsgId(whatsappMsgId);
+        if (messageOpt.isPresent()) {
+            Message message = messageOpt.get();
+            message.setContent(newContent);
+            Message saved = messageRepository.save(message);
+            eventPublisher.publish("MESSAGE_RECEIVED", message.getTicket().getId().toString(), saved);
+            return saved;
+        }
+        return null;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasSystemMessage(UUID ticketId) {
+        return messageRepository.existsByTicketIdAndSenderType(ticketId, SenderType.SISTEMA);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasTriageMenuBeenSent(UUID ticketId) {
+        return messageRepository.findByTicketIdOrderBySentAtAsc(ticketId).stream()
+                .anyMatch(m -> m.getSenderType() == SenderType.SISTEMA 
+                        && m.getContent() != null 
+                        && (m.getContent().contains("escolha uma das opções") || m.getContent().contains("Encaminhei o seu contato") || m.getContent().contains("Opção inválida")));
     }
 }

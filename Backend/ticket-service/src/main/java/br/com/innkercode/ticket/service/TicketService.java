@@ -4,6 +4,8 @@ import br.com.innkercode.ticket.domain.entity.Ticket;
 import br.com.innkercode.ticket.domain.entity.Sector;
 import br.com.innkercode.ticket.domain.entity.TicketSectorHistory;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
+import br.com.innkercode.ticket.domain.model.SenderType;
+import br.com.innkercode.ticket.domain.model.MessageType;
 import br.com.innkercode.ticket.domain.repository.TicketRepository;
 import br.com.innkercode.ticket.domain.repository.SectorRepository;
 import br.com.innkercode.ticket.domain.repository.TicketSectorHistoryRepository;
@@ -36,6 +38,7 @@ public class TicketService {
     private final TicketSectorHistoryRepository ticketSectorHistoryRepository;
     private final TicketEventPublisher eventPublisher;
     private final ClientContactRepository clientContactRepository;
+    private final MessageService messageService;
 
     public List<Ticket> getTickets(List<TicketStatus> statuses, UUID sectorId, UUID assignedAgentId) {
         log.info("Buscando tickets filtrados por statuses: {}, sectorId: {}, assignedAgentId: {}", statuses, sectorId, assignedAgentId);
@@ -129,6 +132,12 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new IllegalArgumentException("Ticket não encontrado com o ID: " + ticketId));
 
+        if (ticket.getStatus() == TicketStatus.CONCLUIDO) {
+            if (ticket.getResolvedAt() != null && ticket.getResolvedAt().isBefore(LocalDateTime.now().minusHours(24))) {
+                throw new IllegalStateException("Este chamado foi concluído há mais de 24 horas e não pode ser reaberto.");
+            }
+        }
+
         ticket.setAssignedAgentId(agentId);
         ticket.setStatus(TicketStatus.EM_ANDAMENTO);
         if (ticket.getClaimedAt() == null) {
@@ -187,8 +196,9 @@ public class TicketService {
     }
 
     @Transactional
-    public Ticket transferTicket(UUID ticketId, UUID targetSectorId, UUID targetAgentId) {
-        log.info("Transferindo ticket {} - Novo setor: {}, Novo atendente: {}", ticketId, targetSectorId, targetAgentId);
+    public Ticket transferTicket(UUID ticketId, UUID targetSectorId, UUID targetAgentId, String targetAgentName) {
+        log.info("Transferindo ticket {} - Novo setor: {}, Novo atendente: {}, Nome atendente: {}", 
+                 ticketId, targetSectorId, targetAgentId, targetAgentName);
         Ticket ticket = getTicketById(ticketId);
 
         // Fecha histórico ativo anterior
@@ -197,6 +207,8 @@ public class TicketService {
                     activeHistory.setExitedAt(LocalDateTime.now());
                     ticketSectorHistoryRepository.save(activeHistory);
                 });
+
+        String systemMessageText = "";
 
         if (targetSectorId != null) {
             Sector sector = sectorRepository.findById(targetSectorId)
@@ -207,9 +219,12 @@ public class TicketService {
                 // Se transferiu para o setor sem atendente específico, volta para a fila
                 ticket.setAssignedAgentId(null);
                 ticket.setStatus(TicketStatus.AGUARDANDO_ATENDIMENTO);
+                systemMessageText = "Chamado transferido para a fila do setor: " + sector.getFriendlyName();
             } else {
                 ticket.setAssignedAgentId(targetAgentId);
                 ticket.setStatus(TicketStatus.EM_ANDAMENTO);
+                String agentLabel = (targetAgentName != null && !targetAgentName.isBlank()) ? targetAgentName : "Atendente";
+                systemMessageText = "Chamado transferido para o setor " + sector.getFriendlyName() + " aos cuidados de " + agentLabel;
             }
 
             // Cria novo histórico para o novo setor
@@ -226,6 +241,8 @@ public class TicketService {
             // Permanece no mesmo setor, apenas altera o atendente
             ticket.setAssignedAgentId(targetAgentId);
             ticket.setStatus(TicketStatus.EM_ANDAMENTO);
+            String agentLabel = (targetAgentName != null && !targetAgentName.isBlank()) ? targetAgentName : "Atendente";
+            systemMessageText = "Chamado transferido para o atendente " + agentLabel;
 
             // Cria novo histórico para o novo atendente no mesmo setor
             TicketSectorHistory newHistory = TicketSectorHistory.builder()
@@ -241,6 +258,12 @@ public class TicketService {
 
         ticket.setUpdatedAt(LocalDateTime.now());
         Ticket updatedTicket = ticketRepository.save(ticket);
+
+        // Salva a mensagem do sistema no chat se houver texto definido
+        if (!systemMessageText.isEmpty()) {
+            messageService.saveMessage(updatedTicket, SenderType.SISTEMA, MessageType.TEXTO, systemMessageText);
+        }
+
         eventPublisher.publish("TICKET_UPDATED", updatedTicket.getId().toString(), updatedTicket);
         return updatedTicket;
     }
@@ -348,5 +371,9 @@ public class TicketService {
         };
         
         return ticketRepository.findAll(spec, pageable);
+    }
+
+    public List<TicketSectorHistory> getTicketSectorHistory(UUID ticketId) {
+        return ticketSectorHistoryRepository.findByTicketId(ticketId);
     }
 }

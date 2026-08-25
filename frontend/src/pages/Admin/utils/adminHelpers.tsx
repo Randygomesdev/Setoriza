@@ -9,7 +9,7 @@ export const formatDuration = (seconds: number | null | undefined): string => {
 };
 
 export const formatCNPJ = (value: string): string => {
-  const digits = value.replace(/\D/g, '');
+  const digits = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   if (digits.length <= 2) return digits;
   if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
   if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;

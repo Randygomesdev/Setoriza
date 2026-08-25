@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Plus, X, Settings, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { Plus, X, Settings, Users, Copy, Check } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import { api } from '../../../services/api';
 
@@ -20,14 +21,24 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
   const [searchUser, setSearchUser] = useState('');
   const [isUserDrawerOpen, setIsUserDrawerOpen] = useState(false);
   const [userSuccessMsg, setUserSuccessMsg] = useState('');
+  const [copied, setCopied] = useState(false);
   
   const [newUser, setNewUser] = useState({
     name: '',
     email: '',
-    password: '',
     role: 'USER',
     sectors: '',
   });
+
+  const [createdTempPassword, setCreatedTempPassword] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isUserDrawerOpen) {
+      setCreatedTempPassword(null);
+      setUserSuccessMsg('');
+      setCopied(false);
+    }
+  }, [isUserDrawerOpen]);
   
   const [editingUser, setEditingUser] = useState<any | null>(null);
 
@@ -35,21 +46,26 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
     e.preventDefault();
     setUserSuccessMsg('');
     setError(null);
+    setCreatedTempPassword(null);
     try {
-      await api.users.create(newUser);
-      setUserSuccessMsg('Usuário criado com sucesso!');
+      const response = await api.users.create({
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        sectors: newUser.sectors,
+      });
+
+      setCreatedTempPassword(response.temporaryPassword || null);
+      setIsUserDrawerOpen(false);
+      
       setNewUser({
         name: '',
         email: '',
-        password: '',
         role: 'USER',
         sectors: '',
       });
+      
       await onRefresh();
-      setTimeout(() => {
-        setIsUserDrawerOpen(false);
-        setUserSuccessMsg('');
-      }, 1500);
     } catch (err: any) {
       setError(err.message || 'Erro ao criar usuário');
     }
@@ -75,6 +91,16 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'Erro ao atualizar colaborador');
+    }
+  };
+
+  const handleToggleActive = async (id: string) => {
+    setError(null);
+    try {
+      await api.users.toggleActive(id);
+      await onRefresh();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao alterar status do colaborador');
     }
   };
 
@@ -143,7 +169,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
           placeholder="Pesquisar por nome, e-mail ou setor..."
           value={searchUser}
           onChange={(e) => setSearchUser(e.target.value)}
-          className="w-full md:w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+          className="w-full md:w-80 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
         />
       </div>
 
@@ -152,7 +178,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
         {filteredUsers.map((usr) => (
           <div 
             key={usr.id} 
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4"
+            className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col justify-between hover:shadow-md transition-all space-y-4"
           >
             {/* Top section: Avatar, Access, and Name */}
             <div className="space-y-3">
@@ -160,15 +186,24 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                 <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 text-white font-extrabold flex items-center justify-center uppercase shadow-sm">
                   {usr.name.slice(0, 2)}
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                  usr.role === 'MASTER'
-                    ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/40'
-                    : usr.role === 'ADMIN'
-                    ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40'
-                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/40'
-                }`}>
-                  {usr.role === 'MASTER' ? 'Master' : usr.role === 'ADMIN' ? 'Admin' : 'Operador'}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[8px] font-extrabold tracking-wider uppercase border ${
+                    usr.active 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-450 dark:border-emerald-900/40' 
+                      : 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/20 dark:text-rose-450 dark:border-rose-900/40'
+                  }`}>
+                    {usr.active ? 'Ativo' : 'Inativo'}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                    usr.role === 'MASTER'
+                      ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/40'
+                      : usr.role === 'ADMIN'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/40'
+                      : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/40'
+                  }`}>
+                    {usr.role === 'MASTER' ? 'Master' : usr.role === 'ADMIN' ? 'Admin' : 'Operador'}
+                  </span>
+                </div>
               </div>
               
               <div>
@@ -205,24 +240,39 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
             </div>
 
             {/* Bottom section: Actions */}
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 flex justify-end">
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800/60 flex gap-2 justify-end">
               {!(usr.role === 'MASTER' && currentUser?.role === 'ADMIN') ? (
-                <button
-                  onClick={() => {
-                    setEditingUser({
-                      id: usr.id,
-                      name: usr.name,
-                      email: usr.email,
-                      role: usr.role,
-                      sectors: usr.sectors || ''
-                    });
-                    setUserSuccessMsg('');
-                    setIsUserDrawerOpen(true);
-                  }}
-                  className="w-full py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 border border-slate-250 dark:border-slate-800 text-xs text-blue-600 dark:text-blue-400 font-bold rounded-xl transition-all text-center select-none cursor-pointer"
-                >
-                  Editar Colaborador
-                </button>
+                <>
+                  <button
+                    onClick={() => {
+                      setEditingUser({
+                        id: usr.id,
+                        name: usr.name,
+                        email: usr.email,
+                        role: usr.role,
+                        sectors: usr.sectors || ''
+                      });
+                      setUserSuccessMsg('');
+                      setIsUserDrawerOpen(true);
+                    }}
+                    className="flex-1 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-850 border border-slate-200 dark:border-slate-850 text-[11px] text-blue-600 dark:text-blue-400 font-bold rounded-xl transition-all text-center select-none cursor-pointer"
+                  >
+                    Editar
+                  </button>
+
+                  {currentUser?.id !== usr.id && (
+                    <button
+                      onClick={() => handleToggleActive(usr.id)}
+                      className={`flex-1 py-2 border text-[11px] font-bold rounded-xl transition-all text-center select-none cursor-pointer ${
+                        usr.active
+                          ? 'bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400'
+                          : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                      }`}
+                    >
+                      {usr.active ? 'Desativar' : 'Reativar'}
+                    </button>
+                  )}
+                </>
               ) : (
                 <span className="text-[10px] text-slate-400 italic">Restrito</span>
               )}
@@ -236,15 +286,16 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
         )}
       </div>
 
-      {/* Sliding Drawer for Users */}
-      {isUserDrawerOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
-          onClick={() => setIsUserDrawerOpen(false)}
-        >
+      {isUserDrawerOpen && createPortal(
+        <>
+          {/* Backdrop */}
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setIsUserDrawerOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div 
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
@@ -282,31 +333,17 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               </div>
 
               {!editingUser && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">E-mail</label>
-                    <input 
-                      type="email"
-                      required
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="email@setoriza.com"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Senha</label>
-                    <input 
-                      type="password"
-                      required
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      placeholder="Digite a senha"
-                    />
-                  </div>
-                </>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">E-mail</label>
+                  <input 
+                    type="email"
+                    required
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    placeholder="email@setoriza.com"
+                  />
+                </div>
               )}
 
               <div className="space-y-1">
@@ -385,7 +422,59 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </>,
+        document.body
+      )}
+
+      {createdTempPassword && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-white">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <span className="p-1 bg-emerald-500/10 rounded-full text-emerald-400">
+                <Check size={16} />
+              </span>
+              <h3 className="font-bold text-xs uppercase tracking-wider">Colaborador Criado!</h3>
+            </div>
+            
+            <p className="text-[11px] text-slate-400 leading-normal">
+              O colaborador foi cadastrado com sucesso. A senha temporária de primeiro acesso foi enviada por e-mail, mas você também pode copiá-la abaixo:
+            </p>
+
+            <div className="p-3.5 bg-blue-950/30 border border-blue-900/40 rounded-xl space-y-2">
+              <span className="text-[9px] font-bold text-blue-400 uppercase tracking-wider block">
+                Senha Provisória Gerada
+              </span>
+              <div className="flex items-center gap-2 bg-slate-950 px-3 py-2 rounded-lg border border-slate-850">
+                <span className="font-mono text-xs text-slate-200 select-all font-semibold flex-1">
+                  {createdTempPassword}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(createdTempPassword);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 cursor-pointer transition-colors"
+                  title="Copiar senha"
+                >
+                  {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setCreatedTempPassword(null);
+                setUserSuccessMsg('');
+              }}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-md shadow-blue-500/20"
+            >
+              Concluído
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

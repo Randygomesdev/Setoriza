@@ -8,5 +8,6 @@ public record AuthenticationResponse(
         String name,
         String email,
         String role,
-        String pictureUrl
+        String pictureUrl,
+        boolean requirePasswordChange
 ) {}

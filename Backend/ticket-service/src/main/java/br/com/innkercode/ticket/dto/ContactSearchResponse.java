@@ -6,5 +6,6 @@ public record ContactSearchResponse(
     UUID id,
     String contactName,
     String whatsappNumber,
-    String companyName
+    String companyName,
+    String tradeName
 ) {}

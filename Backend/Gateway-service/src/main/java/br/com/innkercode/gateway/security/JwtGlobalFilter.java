@@ -27,7 +27,7 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String jwtSecret;
 
-    @Value("${gateway.public-paths:/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/forgot-password,/api/v1/auth/reset-password,/api/v1/auth/oauth2,/login/oauth2,/oauth2,/v3/api-docs,/swagger-ui,/api/v1/webhooks}")
+    @Value("${gateway.public-paths:/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/logout,/api/v1/auth/forgot-password,/api/v1/auth/reset-password,/api/v1/auth/oauth2,/login/oauth2,/oauth2,/v3/api-docs,/swagger-ui,/api/v1/webhooks,/api/v1/tickets/public/media}")
     private List<String> publicPaths;
 
     @Override
@@ -39,13 +39,19 @@ public class JwtGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         String token = null;
+        org.springframework.http.HttpCookie cookie = request.getCookies().getFirst("token");
+        if (cookie != null) {
+            token = cookie.getValue();
+        }
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-        } else if (path != null && path.startsWith("/api/v1/ws")) {
-            token = request.getQueryParams().getFirst("token");
+        if (token == null || token.isBlank()) {
+            String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            } else if (path != null && path.startsWith("/api/v1/ws")) {
+                token = request.getQueryParams().getFirst("token");
+            }
         }
 
         if (token == null || token.isBlank()) {

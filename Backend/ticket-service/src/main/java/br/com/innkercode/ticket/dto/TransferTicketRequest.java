@@ -4,5 +4,6 @@ import java.util.UUID;
 
 public record TransferTicketRequest(
         UUID targetSectorId,
-        UUID targetAgentId
+        UUID targetAgentId,
+        String targetAgentName
 ) {}

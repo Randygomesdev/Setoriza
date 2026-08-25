@@ -13,6 +13,9 @@ RUN mvn clean package -DskipTests -q
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# Instalar ffmpeg para conversão de áudio
+RUN apk add --no-cache ffmpeg
+
 # usuário não-root para segurança
 RUN addgroup -S setoriza && adduser -S setoriza -G setoriza
 USER setoriza

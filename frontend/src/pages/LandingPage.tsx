@@ -257,6 +257,16 @@ export const LandingPage: React.FC = () => {
   const [statsVisible, setStatsVisible] = useState(false);
 
   useEffect(() => {
+    const wasDark = document.documentElement.classList.contains('dark');
+    document.documentElement.classList.remove('dark');
+    return () => {
+      if (wasDark) {
+        document.documentElement.classList.add('dark');
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setStatsVisible(true); },
       { threshold: 0.3 }

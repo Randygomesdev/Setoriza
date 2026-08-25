@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../store/authStore';
 import { useChatStore } from '../../../store/chatStore';
-import { formatTime, getChannelIcon } from '../utils/chatHelpers';
+import { formatTime, getChannelIcon, formatPhoneNumber } from '../utils/chatHelpers';
 import { useToast } from '../../../context/ToastContext';
 import { useConfirm } from '../../../context/ConfirmContext';
 import {
@@ -16,21 +16,36 @@ import {
   Mic,
   X,
   Download,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Info,
+  Smile
 } from 'lucide-react';
+
+const formatMediaUrl = (url: string) => {
+  if (url && url.includes('/setoriza-medias/')) {
+    const fileKey = url.substring(url.lastIndexOf('/') + 1);
+    const host = window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin;
+    return `${host}/api/v1/tickets/public/media/${fileKey}`;
+  }
+  return url;
+};
 
 interface ChatAreaProps {
   usersList: any[];
   isViewingFromHistory: boolean;
   onImageClick: (url: string) => void;
   onViewModeChange: (mode: 'chat' | 'history') => void;
+  showDetailsPanel: boolean;
+  onToggleDetails: () => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
   usersList,
   isViewingFromHistory,
   onImageClick,
-  onViewModeChange
+  onViewModeChange,
+  showDetailsPanel,
+  onToggleDetails
 }) => {
   const { user } = useAuthStore();
   const { addToast } = useToast();
@@ -67,6 +82,33 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [showTransferPopover, setShowTransferPopover] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState('');
   const [transferAgentId, setTransferAgentId] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+
+  // Fechar popover de emoji ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const commonEmojis = [
+    // Smiles & Emotion
+    '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😋', '😛', '😜', '🤪', '😎', '🥳', '😏', '😒', '😞', '😔', '😟', '😭', '😤', '😠', '😡', '🤯', '😳', '🥵', '🥶', '😱', '🤗', '🤔', '🫣', '🤫', '🫠', '😐', '😬', 
+    // Hand Gestures & People
+    '👍', '👎', '👊', '✊', '🤛', '🤜', '🤞', '✌️', '🤟', '🤘', '👌', '🤌', '🤏', '🫵', '👉', '👈', '👆', '👇', '👋', '🤚', '🙏', '👏', '🙌', '💪', '🧠', '👀', 
+    // Hearts & Symbols
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '🌟', '⭐', '✨', '⚡', '💥', '🔥', '🌈', '☀️', '💧', '🌊', '🍀', '🎉', '🎊', '🎁', '🎈', '🏆', 
+    // Objects & Office
+    '💼', '📁', '📂', '📄', '📑', '📊', '📈', '📉', '🗒️', '🗑️', '📌', '📍', '📎', '🔒', '🔓', '🔑', '💡', '🔔', '📢', '🔍', '✉️', '📧', '📝', '💻', '📱', '📞'
+  ];
 
   // Auto-scroll when messages change
   useEffect(() => {
@@ -261,25 +303,25 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderMessageStatus = (status: string) => {
+  const renderMessageStatus = (status: string, isMeBubble = false) => {
     if (!status) return null;
     const s = status.toUpperCase();
     if (s === 'SENT') {
-      return <Check size={12} className="text-slate-400 dark:text-slate-500" />;
+      return <Check size={12} className={isMeBubble ? "text-blue-200/90" : "text-slate-400 dark:text-slate-500"} />;
     }
     if (s === 'DELIVERED') {
       return (
         <div className="flex -space-x-1.5 items-center">
-          <Check size={12} className="text-slate-400 dark:text-slate-500" />
-          <Check size={12} className="text-slate-400 dark:text-slate-500" />
+          <Check size={12} className={isMeBubble ? "text-blue-200/90" : "text-slate-400 dark:text-slate-500"} />
+          <Check size={12} className={isMeBubble ? "text-blue-200/90" : "text-slate-400 dark:text-slate-500"} />
         </div>
       );
     }
     if (s === 'READ' || s === 'PLAYED') {
       return (
         <div className="flex -space-x-1.5 items-center">
-          <Check size={12} className="text-blue-400" />
-          <Check size={12} className="text-blue-400" />
+          <Check size={12} className={isMeBubble ? "text-sky-200" : "text-blue-500 dark:text-blue-400"} />
+          <Check size={12} className={isMeBubble ? "text-sky-200" : "text-blue-500 dark:text-blue-400"} />
         </div>
       );
     }
@@ -318,13 +360,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
             <h2 className="font-bold text-sm text-slate-800 dark:text-slate-200">
               {activeTicket.clientName || 'Cliente em Identificação'}
-              {activeTicket.client?.companyName ? ` (${activeTicket.client.companyName})` : ''}
+              {activeTicket.client?.tradeName ? ` (${activeTicket.client.tradeName})` : ''}
             </h2>
             {getChannelIcon(activeTicket.whatsappNumber)}
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            {activeTicket.whatsappNumber} 
+            {formatPhoneNumber(activeTicket.whatsappNumber)} 
             {activeTicket.sector && (
               <>
                 <span className="text-slate-300 dark:text-slate-600">•</span>
@@ -462,11 +504,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </button>
             </div>
           ) : (
-            <div className="py-1 px-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-2xs uppercase rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-1 select-none">
-              <Clock size={10} />
+            <div className="py-1.5 px-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-xs uppercase rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 select-none shadow-sm">
+              <Clock size={12} />
               {activeTicket.status === 'CONCLUIDO' ? 'Finalizado' : 'Visualizando'}
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={onToggleDetails}
+            className={`p-1.5 rounded-lg border transition-colors flex items-center justify-center cursor-pointer select-none shrink-0 ${
+              showDetailsPanel
+                ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/80'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+            }`}
+            title={showDetailsPanel ? "Ocultar Detalhes" : "Exibir Detalhes"}
+          >
+            <Info size={16} />
+          </button>
         </div>
       </div>
 
@@ -505,11 +560,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 >
                   {msg.messageType === 'IMAGEM' ? (
                     <div 
-                      onClick={() => onImageClick(msg.content)} 
+                      onClick={() => onImageClick(formatMediaUrl(msg.content))} 
                       className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 hover:opacity-90 transition-opacity cursor-zoom-in"
                     >
                       <img 
-                        src={msg.content} 
+                        src={formatMediaUrl(msg.content)} 
                         className="max-h-60 object-cover w-full shadow-inner rounded-lg" 
                         alt="Imagem enviada" 
                       />
@@ -518,18 +573,48 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     msg.content.toLowerCase().endsWith('.webm') || 
                     msg.content.toLowerCase().endsWith('.ogg') || 
                     msg.content.toLowerCase().endsWith('.opus') ||
-                    msg.content.toLowerCase().endsWith('.mp3')
+                    msg.content.toLowerCase().endsWith('.mp3') ||
+                    msg.content.toLowerCase().endsWith('.wav') ||
+                    msg.content.toLowerCase().endsWith('.m4a') ||
+                    msg.content.toLowerCase().endsWith('.aac') ||
+                    msg.content.toLowerCase().endsWith('.amr') ||
+                    msg.content.toLowerCase().endsWith('_file') ||
+                    msg.content.toLowerCase().includes('voice_message')
                   ) ? (
                     <div className="py-1">
                       <audio 
-                        src={msg.content} 
+                        src={formatMediaUrl(msg.content)} 
                         controls 
                         className={`max-w-xs md:max-w-md h-9 rounded-lg ${isMe ? 'filter invert hue-rotate-180 brightness-150' : ''}`}
                       />
                     </div>
+                  ) : msg.messageType === 'DOCUMENTO' && msg.content.toLowerCase().includes('gif_playback') ? (
+                    <div className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 shadow-inner">
+                      <video
+                        src={formatMediaUrl(msg.content)}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="max-h-60 object-cover w-full rounded-lg"
+                      />
+                    </div>
+                  ) : msg.messageType === 'DOCUMENTO' && (
+                    msg.content.toLowerCase().endsWith('.mp4') ||
+                    msg.content.toLowerCase().endsWith('.webm') ||
+                    msg.content.toLowerCase().endsWith('.mov') ||
+                    msg.content.toLowerCase().endsWith('.avi')
+                  ) ? (
+                    <div className="block max-w-xs overflow-hidden rounded-xl border border-slate-200/40 dark:border-slate-800/40 shadow-inner">
+                      <video
+                        src={formatMediaUrl(msg.content)}
+                        controls
+                        className="max-h-60 object-contain w-full rounded-lg"
+                      />
+                    </div>
                   ) : msg.messageType === 'DOCUMENTO' ? (
                     <a 
-                      href={msg.content} 
+                      href={formatMediaUrl(msg.content)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold hover:bg-slate-500/10 transition-colors ${
@@ -540,7 +625,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     >
                       <Download size={14} />
                       <span className="truncate max-w-[180px]">
-                        {msg.content.substring(msg.content.lastIndexOf('/') + 1)}
+                        {(() => {
+                          const fileKey = msg.content.substring(msg.content.lastIndexOf('/') + 1);
+                          return fileKey.includes('_') ? fileKey.substring(fileKey.indexOf('_') + 1) : fileKey;
+                        })()}
                       </span>
                     </a>
                   ) : (
@@ -549,9 +637,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </p>
                   )}
                   
-                  <span className="text-[9px] text-slate-400 dark:text-slate-500 shrink-0 self-end mt-1 select-none flex items-center gap-1 font-medium">
+                  <span className={`text-[9px] shrink-0 self-end mt-1 select-none flex items-center gap-1 font-medium ${
+                    isMe ? 'text-blue-200/90' : 'text-slate-400 dark:text-slate-500'
+                  }`}>
                     {formatTime(msg.sentAt)}
-                    {isMe && renderMessageStatus(msg.status || 'SENT')}
+                    {isMe && renderMessageStatus(msg.status || 'SENT', true)}
                   </span>
                 </div>
               </div>
@@ -613,6 +703,40 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             ) : (
               <>
+                {/* Emoji Trigger & Popover */}
+                <div className="relative flex items-center" ref={emojiPickerRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className={`p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-white transition-all cursor-pointer shadow-sm border border-slate-200 dark:border-slate-700/60 flex items-center justify-center shrink-0 ${
+                      showEmojiPicker ? 'text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-900/30 bg-blue-50/50 dark:bg-blue-950/30' : ''
+                    }`}
+                    title="Inserir emoji"
+                  >
+                    <Smile size={16} />
+                  </button>
+
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-14 left-0 z-50 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-64 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      <div className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wide mb-2 px-1">
+                        Emojis Populares
+                      </div>
+                      <div className="grid grid-cols-7 gap-1.5 max-h-40 overflow-y-auto scrollbar-thin pr-1">
+                        {commonEmojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => setMessageText((prev) => prev + emoji)}
+                            className="text-lg hover:scale-125 transition-transform p-1 flex items-center justify-center cursor-pointer select-none rounded-lg hover:bg-slate-500/10 active:bg-slate-500/20"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <input
                   type="text"
                   placeholder="Escreva sua mensagem..."

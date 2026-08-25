@@ -2,6 +2,7 @@ package br.com.innkercode.ticket.controller;
 
 import br.com.innkercode.ticket.domain.entity.Message;
 import br.com.innkercode.ticket.domain.entity.Ticket;
+import br.com.innkercode.ticket.domain.entity.TicketSectorHistory;
 import br.com.innkercode.ticket.domain.model.TicketStatus;
 import br.com.innkercode.ticket.dto.DashboardSlaMetricsResponse;
 import br.com.innkercode.ticket.dto.MessageResponse;
@@ -26,6 +27,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDateTime;
 
+import br.com.innkercode.ticket.service.S3Service;
+
 @RestController
 @RequestMapping("/tickets")
 @RequiredArgsConstructor
@@ -35,6 +38,7 @@ public class TicketController {
     private final TicketService ticketService;
     private final MessageService messageService;
     private final SlaMetricsService slaMetricsService;
+    private final S3Service s3Service;
 
     @GetMapping
     public ResponseEntity<List<Ticket>> listTickets(
@@ -122,7 +126,7 @@ public class TicketController {
             @RequestBody TransferTicketRequest request
     ) {
         log.info("Recebida requisição para transferir ticket {}", id);
-        Ticket ticket = ticketService.transferTicket(id, request.targetSectorId(), request.targetAgentId());
+        Ticket ticket = ticketService.transferTicket(id, request.targetSectorId(), request.targetAgentId(), request.targetAgentName());
         return ResponseEntity.ok(ticket);
     }
 
@@ -197,6 +201,12 @@ public class TicketController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}/sector-history")
+    public ResponseEntity<List<TicketSectorHistory>> getTicketSectorHistory(@PathVariable UUID id) {
+        log.info("Recebida requisição para recuperar histórico de setores do ticket {}", id);
+        return ResponseEntity.ok(ticketService.getTicketSectorHistory(id));
+    }
+
     @GetMapping("/sla-metrics")
     public ResponseEntity<DashboardSlaMetricsResponse> getSlaMetrics(
             @RequestHeader(value = "X-User-Role", required = false) String userRole
@@ -207,5 +217,31 @@ public class TicketController {
         }
         DashboardSlaMetricsResponse metrics = slaMetricsService.getDashboardSlaMetrics();
         return ResponseEntity.ok(metrics);
+    }
+
+    @GetMapping("/public/media/{fileKey}")
+    public ResponseEntity<byte[]> getPublicMedia(@PathVariable String fileKey) {
+        log.info("Servindo arquivo público do S3: {}", fileKey);
+        try {
+            var responseBytes = s3Service.downloadFileResponse(fileKey);
+            String contentType = responseBytes.response().contentType();
+            if (contentType == null || contentType.isBlank()) {
+                contentType = "application/octet-stream";
+            }
+            String cleanedFilename = fileKey;
+            if (fileKey.contains("_")) {
+                cleanedFilename = fileKey.substring(fileKey.indexOf("_") + 1);
+            }
+            String encodedFilename = java.net.URLEncoder.encode(cleanedFilename, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "%20");
+
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + cleanedFilename + "\"; filename*=UTF-8''" + encodedFilename)
+                    .body(responseBytes.asByteArray());
+        } catch (Exception e) {
+            log.error("Erro ao servir mídia pública {}", fileKey, e);
+            return ResponseEntity.notFound().build();
+        }
     }
 }

@@ -14,8 +14,8 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -49,8 +49,8 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID}
-            client-secret: ${GOOGLE_CLIENT_SECRET}
+            client-id: ${GOOGLE_CLIENT_ID:mock_google_id}
+            client-secret: ${GOOGLE_CLIENT_SECRET:mock_google_secret}
             scope:
               - email
               - profile
@@ -58,3 +58,8 @@ spring:
     jwt:
       secret: ${JWT_SECRET}
       expiration: ${JWT_EXPIRATION:86400000}
+
+management:
+  health:
+    mail:
+      enabled: false

@@ -12,4 +12,5 @@ public interface MessageRepository extends JpaRepository<Message, UUID> {
 
     List<Message> findByTicketIdOrderBySentAtAsc(UUID ticketId);
     java.util.Optional<Message> findByWhatsappMsgId(String whatsappMsgId);
+    boolean existsByTicketIdAndSenderType(UUID ticketId, br.com.innkercode.ticket.domain.model.SenderType senderType);
 }

@@ -43,11 +43,39 @@ public class WebhookPayload {
         private Map<String, Object> audioMessage;
         private Map<String, Object> videoMessage;
         private Map<String, Object> documentMessage;
+        private Map<String, Object> stickerMessage;
+        private ReactionMessage reactionMessage;
+        private ProtocolMessage protocolMessage;
     }
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ExtendedTextMessage {
         private String text;
+        private ContextInfo contextInfo;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ContextInfo {
+        private String stanzaId;
+        private String participant;
+        private WebhookMessage quotedMessage;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ReactionMessage {
+        private WebhookKey key;
+        private String text;
+        private Long senderTimestampMs;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class ProtocolMessage {
+        private WebhookKey key;
+        private String type;
+        private WebhookMessage editedMessage;
     }
 }

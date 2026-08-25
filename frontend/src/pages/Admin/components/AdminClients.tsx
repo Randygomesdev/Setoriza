@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Plus, X, Briefcase, Phone, Trash2 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { formatCNPJ, formatPhone, formatPhoneOnly, formatPhoneNumber } from '../utils/adminHelpers';
@@ -25,6 +26,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
   
   const [newClient, setNewClient] = useState({
     companyName: '',
+    tradeName: '',
     cnpj: '',
     initialContactName: '',
     initialWhatsappNumber: '',
@@ -39,9 +41,10 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
     setClientSuccessMsg('');
     setError(null);
     try {
-      const cleanCnpj = newClient.cnpj.replace(/\D/g, '');
+      const cleanCnpj = newClient.cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       const created = await api.clients.create({
         companyName: newClient.companyName,
+        tradeName: newClient.tradeName,
         cnpj: cleanCnpj,
       });
 
@@ -56,6 +59,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
       setClientSuccessMsg('Cliente cadastrado com sucesso!');
       setNewClient({
         companyName: '',
+        tradeName: '',
         cnpj: '',
         initialContactName: '',
         initialWhatsappNumber: '',
@@ -79,9 +83,10 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
     setError(null);
     if (!editingClient) return;
     try {
-      const cleanCnpj = editingClient.cnpj.replace(/\D/g, '');
+      const cleanCnpj = editingClient.cnpj.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
       await api.clients.update(editingClient.id, {
         companyName: editingClient.companyName,
+        tradeName: editingClient.tradeName,
         cnpj: cleanCnpj,
       });
       setClientSuccessMsg('Cadastro do cliente atualizado com sucesso!');
@@ -182,6 +187,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
     const q = searchClient.replace(/\D/g, '');
     const textQuery = searchClient.toLowerCase();
     return (
+      (client.tradeName && client.tradeName.toLowerCase().includes(textQuery)) ||
       client.companyName.toLowerCase().includes(textQuery) ||
       client.cnpj.replace(/\D/g, '').includes(q)
     );
@@ -216,19 +222,19 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
           placeholder="Pesquisar por razão social ou CNPJ..."
           value={searchClient}
           onChange={(e) => setSearchClient(e.target.value)}
-          className="w-full md:w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
+          className="w-full md:w-80 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-sm"
         />
       </div>
 
       {/* Clients Table (Desktop only) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden hidden md:block">
+      <div className="bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden hidden md:block">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
+            <thead className="bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-slate-400">
               <tr>
-                <th className="px-6 py-3.5">Razão Social</th>
-                <th className="px-6 py-3.5">CNPJ</th>
-                <th className="px-6 py-3.5">Canais Associados</th>
+                <th className="px-6 py-3.5 text-left">Nome Fantasia / Razão Social</th>
+                <th className="px-6 py-3.5 text-left">CNPJ</th>
+                <th className="px-6 py-3.5 text-left">Canais Associados</th>
                 <th className="px-6 py-3.5 text-right">Ações</th>
               </tr>
             </thead>
@@ -237,9 +243,14 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
                 <tr key={client.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-950/20">
                   <td className="px-6 py-4 flex items-center gap-3">
                     <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-blue-500/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center uppercase">
-                      {client.companyName.slice(0, 2)}
+                      {client.tradeName ? client.tradeName.slice(0, 2) : client.companyName.slice(0, 2)}
                     </div>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{client.companyName}</span>
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-slate-805 dark:text-slate-200">{client.tradeName || client.companyName}</span>
+                      {client.tradeName && (
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500">{client.companyName}</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4 font-mono">{formatCNPJ(client.cnpj)}</td>
                   <td className="px-6 py-4">
@@ -293,18 +304,23 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
         {filteredClients.map((client) => (
           <div 
             key={client.id}
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm space-y-4"
+            className="p-5 bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800/80 rounded-2xl shadow-sm space-y-4"
           >
             {/* Top section: initials and company name */}
             <div className="flex justify-between items-start">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 text-emerald-600 dark:text-emerald-400 font-extrabold flex items-center justify-center uppercase shadow-sm">
-                  {client.companyName.slice(0, 2)}
+                  {client.tradeName ? client.tradeName.slice(0, 2) : client.companyName.slice(0, 2)}
                 </div>
                 <div>
-                  <h4 className="font-bold text-slate-805 dark:text-slate-100 text-sm truncate max-w-[200px]" title={client.companyName}>
-                    {client.companyName}
+                  <h4 className="font-bold text-slate-805 dark:text-slate-100 text-sm truncate max-w-[200px]" title={client.tradeName || client.companyName}>
+                    {client.tradeName || client.companyName}
                   </h4>
+                  {client.tradeName && (
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-medium truncate max-w-[200px]" title={client.companyName}>
+                      {client.companyName}
+                    </p>
+                  )}
                   <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5">
                     {formatCNPJ(client.cnpj)}
                   </p>
@@ -353,21 +369,22 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
           </div>
         ))}
         {filteredClients.length === 0 && (
-          <div className="py-8 text-center text-slate-500 text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl">
+          <div className="py-8 text-center text-slate-500 text-xs bg-white/80 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-2xl">
             {searchClient ? 'Nenhum cliente corporativo encontrado para esta busca.' : 'Nenhum cliente cadastrado no banco.'}
           </div>
         )}
       </div>
 
-      {/* Sliding Drawer for Clients */}
-      {isClientDrawerOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
-          onClick={() => setIsClientDrawerOpen(false)}
-        >
+      {isClientDrawerOpen && createPortal(
+        <>
+          {/* Backdrop */}
           <div 
-            className="w-full max-w-md bg-white dark:bg-slate-900 h-full border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+            onClick={() => setIsClientDrawerOpen(false)}
+          />
+          {/* Drawer Panel */}
+          <div 
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-l border-slate-200 dark:border-slate-800 shadow-2xl p-6 overflow-y-auto flex flex-col space-y-4 animate-in slide-in-from-right duration-250"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-850">
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
@@ -390,6 +407,21 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
 
             <form onSubmit={editingClient ? handleUpdateClient : handleCreateClient} className="space-y-4 flex-1">
               <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Nome Fantasia</label>
+                <input 
+                  type="text"
+                  required
+                  value={editingClient ? (editingClient.tradeName || '') : newClient.tradeName}
+                  onChange={(e) => {
+                    if (editingClient) setEditingClient({ ...editingClient, tradeName: e.target.value });
+                    else setNewClient({ ...newClient, tradeName: e.target.value });
+                  }}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="Nome comercial do cliente"
+                />
+              </div>
+
+              <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase">Razão Social</label>
                 <input 
                   type="text"
@@ -400,7 +432,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
                     else setNewClient({ ...newClient, companyName: e.target.value });
                   }}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  placeholder="Nome da empresa"
+                  placeholder="Nome jurídico da empresa"
                 />
               </div>
 
@@ -415,7 +447,7 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
                     if (editingClient) setEditingClient({ ...editingClient, cnpj: e.target.value });
                     else setNewClient({ ...newClient, cnpj: e.target.value });
                   }}
-                  className="w-full bg-slate-50 dark:bg-slate-955 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="00.000.000/0000-00"
                 />
               </div>
@@ -560,7 +592,8 @@ export const AdminClients: React.FC<AdminClientsProps> = ({
               </div>
             </form>
           </div>
-        </div>
+        </>,
+        document.body
       )}
     </div>
   );

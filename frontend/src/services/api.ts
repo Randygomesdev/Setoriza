@@ -1,6 +1,7 @@
 import { useAuthStore } from '../store/authStore';
 
-const BASE_URL = 'http://localhost:8080/api/v1';
+const host = window.location.hostname === 'localhost' ? 'http://localhost:8080' : window.location.origin;
+const BASE_URL = `${host}/api/v1`;
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token;
@@ -15,10 +16,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && path !== '/auth/login') {
     // Session expired or invalid token
     useAuthStore.getState().logout();
     throw new Error('Sessão expirada. Por favor, faça login novamente.');
@@ -55,6 +57,7 @@ export const api = {
         email: string;
         role: 'MASTER' | 'ADMIN' | 'USER';
         pictureUrl?: string;
+        requirePasswordChange: boolean;
       }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
@@ -70,6 +73,17 @@ export const api = {
       return request<void>('/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({ token, newPassword }),
+      });
+    },
+    changePassword: async (currentPassword: string, newPassword: string) => {
+      return request<void>('/users/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    },
+    logout: async () => {
+      return request<void>('/auth/logout', {
+        method: 'POST',
       });
     },
   },
@@ -150,11 +164,15 @@ export const api = {
       });
     },
     
-    transfer: async (id: string, targetSectorId?: string, targetAgentId?: string) => {
+    transfer: async (id: string, targetSectorId?: string, targetAgentId?: string, targetAgentName?: string) => {
       return request<any>(`/tickets/${id}/transfer`, {
         method: 'POST',
-        body: JSON.stringify({ targetSectorId, targetAgentId }),
+        body: JSON.stringify({ targetSectorId, targetAgentId, targetAgentName }),
       });
+    },
+
+    getSectorHistory: async (id: string) => {
+      return request<any[]>(`/tickets/${id}/sector-history`);
     },
     
     getMessages: async (id: string) => {
@@ -242,6 +260,11 @@ export const api = {
         body: JSON.stringify(user),
       });
     },
+    toggleActive: async (id: string) => {
+      return request<any>(`/users/${id}/toggle-active`, {
+        method: 'PUT',
+      });
+    },
   },
   
   clients: {
@@ -251,13 +274,31 @@ export const api = {
     list: async () => {
       return request<any[]>('/clients');
     },
-    create: async (client: { companyName: string; cnpj: string }) => {
+    create: async (client: { 
+      companyName: string; 
+      tradeName: string;
+      cnpj: string;
+      whatsappApiType?: string;
+      metaPhoneNumberId?: string;
+      metaAccessToken?: string;
+      metaWabaId?: string;
+      metaVerifyToken?: string;
+    }) => {
       return request<any>('/clients', {
         method: 'POST',
         body: JSON.stringify(client),
       });
     },
-    update: async (id: string, client: { companyName: string; cnpj: string }) => {
+    update: async (id: string, client: { 
+      companyName: string; 
+      tradeName: string;
+      cnpj: string;
+      whatsappApiType?: string;
+      metaPhoneNumberId?: string;
+      metaAccessToken?: string;
+      metaWabaId?: string;
+      metaVerifyToken?: string;
+    }) => {
       return request<any>(`/clients/${id}`, {
         method: 'PUT',
         body: JSON.stringify(client),
@@ -302,6 +343,37 @@ export const api = {
       return request<any>('/tickets/integration/webhook', {
         method: 'POST',
         body: JSON.stringify({ serverUrl }),
+      });
+    },
+    getConfig: async () => {
+      return request<any>('/tickets/integration/config');
+    },
+    updateConfig: async (config: any) => {
+      return request<any>('/tickets/integration/config', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      });
+    },
+    testMeta: async () => {
+      return request<any>('/tickets/integration/test-meta', {
+        method: 'POST',
+      });
+    },
+  },
+
+  ai: {
+    getConfig: async () => {
+      return request<any>('/ai/config');
+    },
+    updateConfig: async (config: any) => {
+      return request<any>('/ai/config', {
+        method: 'PUT',
+        body: JSON.stringify(config),
+      });
+    },
+    testConnection: async () => {
+      return request<string>('/ai/config/test', {
+        method: 'POST',
       });
     },
   },

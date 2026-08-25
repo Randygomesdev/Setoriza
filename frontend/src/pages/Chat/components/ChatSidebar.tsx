@@ -15,7 +15,9 @@ import {
   Archive,
   Settings,
   History,
-  X
+  X,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 interface ChatSidebarProps {
@@ -50,7 +52,10 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     activeTicketId,
     loading,
     wsConnected,
-    claimTicket
+    claimTicket,
+    unreadCounts,
+    audioMuted,
+    toggleAudioMute
   } = useChatStore();
 
   // Local UI States for filtering
@@ -130,7 +135,8 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         const term = searchTerm.toLowerCase();
         const clientNameMatch = ticket.clientName && ticket.clientName.toLowerCase().includes(term);
         const phoneMatch = ticket.whatsappNumber && ticket.whatsappNumber.includes(term);
-        const companyNameMatch = ticket.client?.companyName && ticket.client.companyName.toLowerCase().includes(term);
+        const companyNameMatch = (ticket.client?.tradeName && ticket.client.tradeName.toLowerCase().includes(term)) ||
+                                 (ticket.client?.companyName && ticket.client.companyName.toLowerCase().includes(term));
         if (!clientNameMatch && !phoneMatch && !companyNameMatch) return false;
       }
 
@@ -146,6 +152,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
   };
 
   const filteredTickets = getFilteredTickets();
+
+  const unreadMeusCount = tickets.reduce((acc, ticket) => {
+    if (ticket.status === 'EM_ANDAMENTO' && ticket.assignedAgentId === user?.id) {
+      return acc + (unreadCounts[ticket.id] || 0);
+    }
+    return acc;
+  }, 0);
 
   return (
     <div className={`${activeTicketId ? 'hidden' : 'flex'} md:flex w-full md:w-96 flex-col border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 backdrop-blur-md h-full`}>
@@ -171,7 +184,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         </div>
 
         <div className="flex gap-1">
-          {(user?.role === 'ADMIN' || user?.role === 'MASTER') && (
+          {user?.role === 'ADMIN' && (
             <Link
               to="/admin"
               className="p-2 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
@@ -180,6 +193,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
               <Settings size={16} />
             </Link>
           )}
+          <button
+            onClick={toggleAudioMute}
+            className="p-2 rounded-lg text-slate-400 hover:text-blue-650 dark:hover:text-blue-400 hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
+            title={audioMuted ? "Ativar som de notificação" : "Silenciar notificação"}
+          >
+            {audioMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          </button>
           <button
             onClick={onToggleTheme}
             className="p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-slate-800 transition-colors"
@@ -201,7 +221,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <div className="grid grid-cols-3 p-1 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 gap-1">
         <button
           onClick={() => onActiveTabChange('meus')}
-          className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold tracking-wide transition-all flex items-center justify-center gap-1 ${
+          className={`py-1.5 px-2 rounded-lg text-[11px] font-semibold tracking-wide transition-all relative flex items-center justify-center gap-1 ${
             activeTab === 'meus'
               ? 'bg-blue-600 text-white shadow-md'
               : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-900/40'
@@ -209,6 +229,11 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         >
           <MessageSquare size={12} />
           Ativos
+          {unreadMeusCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-blue-500 text-white font-bold rounded-full text-[9px] w-4 h-4 flex items-center justify-center border border-slate-950 animate-pulse">
+              {unreadMeusCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => onActiveTabChange('aguardando')}
@@ -324,8 +349,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     {getChannelIcon(ticket.whatsappNumber)}
                     <span className="font-semibold text-xs text-slate-700 dark:text-slate-200 truncate">
                       {ticket.clientName || 'Cliente em Triagem'}
-                      {ticket.client?.companyName ? ` (${ticket.client.companyName})` : ''}
+                      {ticket.client?.tradeName ? ` (${ticket.client.tradeName})` : ticket.client?.companyName ? ` (${ticket.client.companyName})` : ''}
                     </span>
+                    {(unreadCounts[ticket.id] || 0) > 0 && (
+                      <span className="bg-blue-500 text-white font-bold rounded-full text-[9px] px-1.5 py-0.5 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-800 animate-pulse">
+                        {unreadCounts[ticket.id]}
+                      </span>
+                    )}
                   </div>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                     {formatTime(ticket.updatedAt || ticket.createdAt || '')}

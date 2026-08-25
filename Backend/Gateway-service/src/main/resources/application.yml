@@ -15,6 +15,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
   cloud:
     gateway:
@@ -66,7 +67,7 @@ spring:
         - id: ticket_service
           uri: ${TICKET_SERVICE_URL:http://localhost:8082}
           predicates:
-            - Path=/api/v1/tickets/**, /api/v1/messages/**, /api/v1/webhooks/**, /api/v1/sectors/**, /api/v1/clients/**
+            - Path=/api/v1/tickets/**, /api/v1/messages/**, /api/v1/webhooks/**, /api/v1/sectors/**, /api/v1/clients/**, /api/v1/ai/**
 
 management:
   endpoints:

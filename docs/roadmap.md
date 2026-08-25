@@ -14,7 +14,11 @@ graph TD
     Phase5[Fase 5: Dashboard Frontend] -->|Concluído| Phase6[Fase 6: Testes Integrados E2E]
     Phase6 -->|Concluído| Phase9[Fase 9: Refatoração & Mobile]
     Phase9 -->|Concluído| Phase10[Fase 10: Toasts & Alertas Custom]
-    Phase10 -->|A seguir| Phase7[Fase 7: Produção & DevOps]
+    Phase10 -->|Concluído| Phase13[Fase 13: Chatbot Inteligente IA]
+    Phase13 -->|Concluído| Phase14[Fase 14: Notificações em Tempo Real]
+    Phase14 -->|Concluído| Phase7[Fase 7: Produção & DevOps]
+    Phase7 -->|A seguir| Phase11[Fase 11: API Híbrida Meta]
+    Phase11 -->|Planejado| Phase12[Fase 12: Suporte a Grupos]
 ```
 
 ---
@@ -120,14 +124,14 @@ graph TD
 
 ---
 
-### 🌐 Fase 7: Produção & DevOps (Cloud Deploy)
+### 🌐 Fase 7: Produção & DevOps (Cloud Deploy) (Concluído Parcial - Pronto para VPS)
 *Objetivo: Preparar e implantar a aplicação na nuvem com segurança SSL e alta disponibilidade.*
 
-- [ ] **7.1 Otimização de Imagens Docker:** Criação de arquivos `Dockerfile` multi-stage para compilar e empacotar a aplicação de forma otimizada para produção.
-- [ ] **7.2 Orquestração:**
+- [x] **7.1 Otimização de Imagens Docker:** Criação de arquivos `Dockerfile` multi-stage para compilar e empacotar a aplicação de forma otimizada para produção.
+- [x] **7.2 Orquestração:**
   - Ajustar o compose para modo de produção ou mapeamento Kubernetes/Docker Swarm.
   - Substituir senhas padrão e credenciais locais por injeção segura de Secrets.
-- [ ] **7.3 Servidor de Ingress & SSL:** Setup do Nginx ou Traefik como Proxy Reverso, gerenciando a renovação automática de certificados SSL gratuitos via Let's Encrypt.
+- [x] **7.3 Servidor de Ingress & SSL:** Setup do Nginx ou Traefik como Proxy Reverso, gerenciando a renovação automática de certificados SSL gratuitos via Let's Encrypt (Configuração base do Nginx e CI/CD prontas).
 - [ ] **7.4 Estratégia de Backup:** Configurar rotinas de backup automatizadas diárias do banco PostgreSQL na nuvem.
 
 ---
@@ -148,6 +152,12 @@ graph TD
 - [x] **9.2 Decomposição do Admin.tsx:** Segmentar a visualização monolítica em subcomponentes reutilizáveis (`AdminDashboard`, `AdminUsers`, `AdminClients`, `AdminIntegrations`, `AdminSectors`, `AdminHistory`).
 - [x] **9.3 Responsividade Mobile Completa:** Implementar sidebar colapsável com controle hambúrguer, overlay e grids flexíveis de cards com paginação isolada no mobile.
 - [x] **9.4 Otimização de Performance:** Refinar seletores e imports para evitar re-renderizações indesejadas e garantir compilação stricta sem warnings.
+- [x] **9.5 Histórico de Transferências (Linha do Tempo):** Implementação de gavetas (accordions) colapsáveis na barra lateral e renderização dinâmica da linha do tempo das transferências do ticket.
+- [x] **9.6 Validação de Reabertura Limitada (Janela de 24h):** Restringir a reabertura manual de chamados concluídos a uma janela máxima de 24 horas, bloqueando a ação no backend e desabilitando o botão correspondente no frontend.
+- [x] **9.7 Logs de Sistema na Transferência:** Disparar e registrar mensagens automáticas internas de sistema (`SISTEMA`) no chat detalhando transferências de setores e atendentes para contexto dos operadores.
+- [x] **9.8 Unificação Visual do Painel Admin:** Aplicar o sistema de design glassmorphic e translúcido com as cores operacionais em todas as sub-telas do menu de administração.
+- [x] **9.9 Navegação "Ver Conversa" no Histórico Admin:** Inserir ação de visualização de conversa na tabela desktop e cards mobile que redireciona o administrador diretamente ao chat com o ticket carregado.
+- [x] **9.10 Histórico de Chamados Responsivo (Cards Mobile):** Implementar visualização em cards responsivos para o histórico operacional no painel do atendente (/chat).
 
 ---
 
@@ -157,3 +167,43 @@ graph TD
 - [x] **10.1 Criação do Contexto de Toast (Notificações):** Estruturar o `ToastProvider` e hook `useToast` para gerenciamento em lote de mensagens temporárias de sucesso, erro e alertas flutuantes no canto da tela.
 - [x] **10.2 Modais de Confirmação Personalizados (Confirmations):** Substituir a função nativa `window.confirm` (usada em deleções de clientes, conexões ou exclusões de contatos) por um modal de confirmação premium estilizado com nosso design dark/light.
 - [x] **10.3 Integração em Lote no Frontend:** Substituir as chamadas de alertas, modais e mensagens de erro do sistema de API pelas novas instâncias de Toasts/Modais customizados nos módulos Chat e Admin.
+
+---
+
+### 📲 Fase 11: Integração Híbrida com API Oficial da Meta (A Seguir)
+*Objetivo: Permitir o uso integrado e alternável da API oficial do WhatsApp (Cloud API da Meta) e a Evolution API.*
+
+- [ ] **11.1 Abstração do Canal de Envio (Interface):** Definir uma interface de serviço unificada no `ticket-service` (ex: `WhatsAppGatewayService`) para encapsular o disparo de mensagens, mídias e templates independentemente da API selecionada.
+- [ ] **11.2 Cliente API Oficial da Meta:** Desenvolver o cliente HTTP no Spring Boot integrado com a API Cloud do Graph da Meta (envio de texto, templates pré-aprovados e mídias).
+- [ ] **11.3 Webhook Receptor da Meta:** Implementar o endpoint de webhook específico para receber e descriptografar os payloads enviados pelos servidores da Meta.
+- [ ] **11.4 Escolha Híbrida do Cliente:** Criar campo de configuração no cadastro do cliente corporativo (Admin) para selecionar se ele utiliza a Evolution API ou a API oficial da Meta, alternando o roteamento da mensagem dinamicamente no backend.
+
+---
+
+### 👥 Fase 12: Suporte a Grupos & Intercepção por Hashtags (Planejado)
+*Objetivo: Possibilitar a abertura de chamados no painel a partir de mensagens enviadas em grupos de WhatsApp.*
+
+- [ ] **12.1 Roteamento por remoteJid:** Adaptar o `TicketService` e a persistência do banco de dados para diferenciar conversas privadas (`@s.whatsapp.net`) de mensagens em grupos (`@g.us`).
+- [ ] **12.2 Intercepção por Hashtags:** Desenvolver filtro no backend para escutar grupos de WhatsApp autorizados e, caso um participante envie uma tag chave (ex: `#fiscal`, `#dp`), criar um chamado na fila do setor correspondente.
+- [ ] **12.3 Mensagens de Fora de Horário & Respostas em Grupo:** Configurar mensagens de ausência e disparos automáticos para grupos quando o atendimento for iniciado ou fora do horário comercial.
+
+---
+
+### 🧠 Fase 13: Chatbot Inteligente com IA (Concluído)
+*Objetivo: Integrar grandes modelos de linguagem (LLMs) para responder dúvidas frequentes e refinar a triagem automática.*
+
+- [x] **13.1 Cliente de Integração com LLM:** Desenvolver integração com a API da OpenAI (GPT), Anthropic (Claude) ou Google (Gemini) no `ticket-service` (usando Gemini 3.5-flash).
+- [x] **13.2 Base de Conhecimento e Prompting:** Estruturar prompt de sistema alimentado por setores ativos no banco de dados para a IA classificar.
+- [x] **13.3 Classificação Inteligente de Setor:** Utilizar IA para interpretar a solicitação inicial em linguagem natural do cliente e direcioná-lo automaticamente ao setor correto, atualizando o status para `AGUARDANDO_ATENDIMENTO`.
+- [x] **13.4 Tratamento e Validação de JSON robusto:** Implementar parser robusto no backend para recuperar a resposta estruturada em JSON da LLM e suportar thinking tokens através de limites maiores (2048 tokens).
+
+---
+
+### 🔔 Fase 14: Sistema de Notificações em Tempo Real (Concluído)
+*Objetivo: Notificar operadores visual e sonoramente sobre novos chamados ou mensagens em background/segundo plano.*
+
+- [x] **14.1 Notificações Nativas do Navegador (Desktop API):** Exibir banners nativos do SO ao receber novas mensagens de clientes se a aba estiver em background/minimizada, permitindo focar e abrir o chat no clique.
+- [x] **14.2 Sintetizador de Áudio Customizado (Web Audio API):** Reproduzir alertas sonoros premium gerados por síntese de áudio do próprio navegador, evitando carregamento lento de arquivos de mídia externos.
+- [x] **14.3 Título Dinâmico Piscante (Tab Flashing):** Fazer piscar o título da aba do navegador indicando novas mensagens recebidas de clientes até que a aba receba foco.
+- [x] **14.4 Badges de Mensagens Não Lidas:** Adicionar badges dinâmicos de contagem de mensagens não lidas na aba "Ativos" da sidebar e nos cartões de conversas individuais de clientes.
+- [x] **14.5 Botão de Silenciamento Persistente:** Incluir botão de controle de volume no perfil do atendente para mutar/desmutar alertas de áudio, salvando a preferência no `localStorage`.
